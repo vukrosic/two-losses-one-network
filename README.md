@@ -78,8 +78,12 @@ Dividing each thing's loss by its own typical size removed the effect of the gap
 
 ## Is this new?
 
+The effect itself is known: with squared error, a target at a bigger scale swamps a smaller one ([Khakhar & Buckman, 2022](https://arxiv.org/abs/2211.07447)), and normalizing each target fixes it ([PopArt](https://arxiv.org/abs/1809.04474)). [Fernandes et al. (ICML 2023)](https://arxiv.org/abs/2302.09650) showed that a multilingual model acts like a single-language model with a fraction of the weights, set by each language's share of the data. What is new here is the law from the loss ratio alone, the same-size test, the rank-k formula and the fixed slowdown.
+
 | Work | Rebalances losses | Same-size test against one network per term | Predicts the harm from one number |
 |---|---|---|---|
+| Khakhar & Buckman 2022 (targets at different scales) | no (histogram loss) | no | no |
+| Fernandes et al. 2023 (multilingual scaling laws) | data share | yes, as effective weights | from the data share, fitted per language pair |
 | GradNorm, uncertainty weighting, PCGrad, PopArt | yes | no | no |
 | Driving and robot world models (Scene Transformer, UniAD, GAIA-1, DreamerV3) | some (symlog, per-action scaling) | no | no |
 | Mixture-of-experts and multi-token prediction (Switch Transformer, DeepSeek-V3) | fixed small weights | no | no |
