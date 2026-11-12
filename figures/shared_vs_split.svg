@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+  </defs>
+  <rect width="880" height="300" fill="#fff"/>
+  <!-- panel a -->
+  <rect x="12" y="12" width="420" height="276" rx="12" fill="#f6f7f9" stroke="#e1e4e8"/>
+  <text x="30" y="40" font-size="15" font-weight="bold" fill="#1b1b1b">(a) One network predicts both</text>
+  <rect x="30" y="60" width="110" height="64" rx="8" fill="#eceff3" stroke="#8a94a3"/>
+  <text x="85" y="84" font-size="13" text-anchor="middle" fill="#1b1b1b">car and</text>
+  <text x="85" y="100" font-size="13" text-anchor="middle" fill="#1b1b1b">pedestrian,</text>
+  <text x="85" y="116" font-size="13" text-anchor="middle" fill="#1b1b1b">last 3 steps</text>
+  <line x1="140" y1="92" x2="178" y2="92" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <rect x="180" y="57" width="104" height="70" rx="8" fill="#dbe7f7" stroke="#4a78b5"/>
+  <text x="232" y="88" font-size="13" text-anchor="middle" fill="#1b1b1b">shared</text>
+  <text x="232" y="104" font-size="13" text-anchor="middle" fill="#1b1b1b">network</text>
+  <line x1="284" y1="80" x2="312" y2="70" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="284" y1="104" x2="312" y2="114" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <rect x="314" y="54" width="104" height="30" rx="7" fill="#d8efdf" stroke="#3f8f5a"/>
+  <text x="366" y="74" font-size="13" text-anchor="middle" fill="#1b1b1b">car's move</text>
+  <rect x="314" y="100" width="104" height="30" rx="7" fill="#d8efdf" stroke="#3f8f5a"/>
+  <text x="366" y="120" font-size="12" text-anchor="middle" fill="#1b1b1b">pedestrian's move</text>
+  <text x="30" y="153" font-size="12" fill="#5a5a5a">weights</text>
+  <rect x="180" y="143" width="104" height="12" rx="3" fill="#4a78b5"/>
+  <text x="30" y="186" font-size="12" fill="#5a5a5a">error on new clips</text>
+  <line x1="200" y1="268" x2="400" y2="268" stroke="#999"/>
+  <rect x="230" y="236" width="44" height="32" fill="#cfd6df" stroke="#7d8794"/>
+  <rect x="318" y="182" width="44" height="86" fill="#f2b8b0" stroke="#c0392b"/>
+  <text x="252" y="284" font-size="12" text-anchor="middle" fill="#1b1b1b">car</text>
+  <text x="340" y="284" font-size="12" text-anchor="middle" fill="#1b1b1b">pedestrian</text>
+  <!-- panel b -->
+  <rect x="448" y="12" width="420" height="276" rx="12" fill="#f6f7f9" stroke="#e1e4e8"/>
+  <text x="466" y="40" font-size="15" font-weight="bold" fill="#1b1b1b">(b) One network per thing, same weights</text>
+  <rect x="466" y="60" width="110" height="64" rx="8" fill="#eceff3" stroke="#8a94a3"/>
+  <text x="521" y="84" font-size="13" text-anchor="middle" fill="#1b1b1b">car and</text>
+  <text x="521" y="100" font-size="13" text-anchor="middle" fill="#1b1b1b">pedestrian,</text>
+  <text x="521" y="116" font-size="13" text-anchor="middle" fill="#1b1b1b">last 3 steps</text>
+  <line x1="576" y1="80" x2="608" y2="70" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="576" y1="104" x2="608" y2="114" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <rect x="610" y="54" width="118" height="30" rx="7" fill="#fde3c8" stroke="#d9822b"/>
+  <text x="669" y="74" font-size="12" text-anchor="middle" fill="#1b1b1b">car's network</text>
+  <rect x="610" y="100" width="118" height="30" rx="7" fill="#fde3c8" stroke="#d9822b"/>
+  <text x="669" y="120" font-size="12" text-anchor="middle" fill="#1b1b1b">pedestrian's network</text>
+  <line x1="728" y1="69" x2="750" y2="69" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="728" y1="115" x2="750" y2="115" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <rect x="752" y="54" width="104" height="30" rx="7" fill="#d8efdf" stroke="#3f8f5a"/>
+  <text x="804" y="74" font-size="13" text-anchor="middle" fill="#1b1b1b">car's move</text>
+  <rect x="752" y="100" width="104" height="30" rx="7" fill="#d8efdf" stroke="#3f8f5a"/>
+  <text x="804" y="120" font-size="12" text-anchor="middle" fill="#1b1b1b">pedestrian's move</text>
+  <text x="466" y="153" font-size="12" fill="#5a5a5a">weights</text>
+  <rect x="610" y="143" width="58" height="12" rx="3" fill="#d9822b"/>
+  <rect x="670" y="143" width="58" height="12" rx="3" fill="#d9822b"/>
+  <text x="466" y="186" font-size="12" fill="#5a5a5a">error on new clips</text>
+  <line x1="636" y1="268" x2="836" y2="268" stroke="#999"/>
+  <rect x="666" y="236" width="44" height="32" fill="#cfd6df" stroke="#7d8794"/>
+  <rect x="754" y="230" width="44" height="38" fill="#f2b8b0" stroke="#c0392b"/>
+  <text x="688" y="284" font-size="12" text-anchor="middle" fill="#1b1b1b">car</text>
+  <text x="776" y="284" font-size="12" text-anchor="middle" fill="#1b1b1b">pedestrian</text>
+</svg>

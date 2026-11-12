@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+  </defs>
+  <rect width="900" height="470" fill="#fff"/>
+  <!-- panel a -->
+  <rect x="12" y="12" width="876" height="200" rx="12" fill="#f6f7f9" stroke="#e1e4e8"/>
+  <text x="30" y="40" font-size="15" font-weight="bold" fill="#1b1b1b">(a) One training step of the shared network, with numbers</text>
+  <g font-size="13" fill="#1b1b1b">
+    <rect x="30" y="62" width="190" height="122" rx="9" fill="#eceff3" stroke="#8a94a3"/>
+    <circle cx="50" cy="82" r="11" fill="#333"/><text x="50" y="86" font-size="12" text-anchor="middle" fill="#fff">1</text>
+    <text x="68" y="87" font-weight="bold">Input</text>
+    <text x="44" y="116">last 3 positions of</text>
+    <text x="44" y="134">the car and the</text>
+    <text x="44" y="152">pedestrian</text>
+
+    <rect x="244" y="62" width="190" height="122" rx="9" fill="#dbe7f7" stroke="#4a78b5"/>
+    <circle cx="264" cy="82" r="11" fill="#333"/><text x="264" y="86" font-size="12" text-anchor="middle" fill="#fff">2</text>
+    <text x="282" y="87" font-weight="bold">True next move</text>
+    <text x="258" y="116">car moves 5 units</text>
+    <text x="258" y="134">pedestrian moves 1 unit</text>
+
+    <rect x="458" y="62" width="190" height="122" rx="9" fill="#d8efdf" stroke="#3f8f5a"/>
+    <circle cx="478" cy="82" r="11" fill="#333"/><text x="478" y="86" font-size="12" text-anchor="middle" fill="#fff">3</text>
+    <text x="496" y="87" font-weight="bold">Prediction misses 10%</text>
+    <text x="472" y="116">car error 0.5</text>
+    <text x="472" y="134">pedestrian error 0.1</text>
+
+    <rect x="672" y="62" width="200" height="122" rx="9" fill="#fff6d6" stroke="#c9a227"/>
+    <circle cx="692" cy="82" r="11" fill="#333"/><text x="692" y="86" font-size="12" text-anchor="middle" fill="#fff">4</text>
+    <text x="710" y="87" font-weight="bold">Squared error loss</text>
+    <text x="686" y="116">car 0.25, pedestrian 0.01</text>
+    <text x="686" y="140" font-weight="bold">96% of the loss</text>
+    <text x="686" y="158" font-weight="bold">comes from the car</text>
+  </g>
+  <line x1="220" y1="123" x2="242" y2="123" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="434" y1="123" x2="456" y2="123" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="648" y1="123" x2="670" y2="123" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+
+  <!-- panel b -->
+  <rect x="12" y="226" width="876" height="232" rx="12" fill="#f6f7f9" stroke="#e1e4e8"/>
+  <text x="30" y="254" font-size="15" font-weight="bold" fill="#1b1b1b">(b) Which weights each error changes during training</text>
+  <g font-size="13" fill="#1b1b1b">
+    <text x="30" y="282" fill="#5a5a5a">One shared network</text>
+    <rect x="30" y="300" width="150" height="86" rx="9" fill="#dbe7f7" stroke="#4a78b5"/>
+    <text x="105" y="340" text-anchor="middle">shared</text>
+    <text x="105" y="358" text-anchor="middle">network</text>
+    <rect x="250" y="300" width="170" height="34" rx="7" fill="#cfd6df" stroke="#7d8794"/>
+    <text x="335" y="322" text-anchor="middle">car's error (big)</text>
+    <rect x="250" y="352" width="170" height="34" rx="7" fill="#f2b8b0" stroke="#c0392b"/>
+    <text x="335" y="374" text-anchor="middle">pedestrian's error (small)</text>
+    <text x="30" y="420">Both errors change the same weights,</text>
+    <text x="30" y="438">and the big one decides where they go.</text>
+
+    <text x="470" y="282" fill="#5a5a5a">One network per thing, same total weights</text>
+    <rect x="470" y="300" width="170" height="34" rx="7" fill="#fde3c8" stroke="#d9822b"/>
+    <text x="555" y="322" text-anchor="middle">car's network</text>
+    <rect x="470" y="352" width="170" height="34" rx="7" fill="#fde3c8" stroke="#d9822b"/>
+    <text x="555" y="374" text-anchor="middle">pedestrian's network</text>
+    <rect x="700" y="300" width="170" height="34" rx="7" fill="#cfd6df" stroke="#7d8794"/>
+    <text x="785" y="322" text-anchor="middle">car's error</text>
+    <rect x="700" y="352" width="170" height="34" rx="7" fill="#f2b8b0" stroke="#c0392b"/>
+    <text x="785" y="374" text-anchor="middle">pedestrian's error</text>
+    <text x="470" y="420">Each network is changed only by its own</text>
+    <text x="470" y="438">thing's error.</text>
+  </g>
+  <line x1="250" y1="317" x2="182" y2="330" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="250" y1="369" x2="182" y2="356" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="700" y1="317" x2="642" y2="317" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+  <line x1="700" y1="369" x2="642" y2="369" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+</svg>
