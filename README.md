@@ -23,11 +23,15 @@ We are using this work to write a conference paper. Code, data and text are free
 
 ## Measure the loss ratio before you add two losses together
 
+![How Λ and P are measured](figures/measure.svg)
+
 Λ is easy to measure: train one small network per term, compare their final losses. Λ = 10 predicts P ≈ 1.8; Λ = 100 predicts P ≈ 5.7. A world with no physics at all (two random teacher networks) falls on the same line as driving, so the rule is about the loss, not about motion.
 
 > **The size of each term in the sum, not what it means, decides how much the smaller term is neglected.**
 
 ## Treat a change of units as a loss weight
+
+![The same misses in metres and centimetres](figures/units.svg)
 
 ![Loss weight and unit change give the same penalty](figures/weight_units.png)
 
@@ -38,9 +42,13 @@ We are using this work to write a conference paper. Code, data and text are free
 
 > **Measuring one thing in centimetres instead of metres is the same as weighting its loss by 10,000.**
 
-This is also a theorem: at the best weights of any network, raising one loss's weight can only lower that loss and raise the other. For a shared linear network with limited capacity, the harm is P = ((1 + Λ^(1/β)) / 2)^(β−1), which grows slower than Λ and does not depend on the network's size ([paper, section 7](paper/paper.html#s7)).
+This is also a theorem: at the best weights of any network, raising one loss's weight can only lower that loss and raise the other. For a shared linear network with limited capacity, the harm is P = ((1 + Λ^(1/β)) / 2)^(β−1), which grows slower than Λ and does not depend on the network's size ([paper, section 7](paper/paper.html#s7)). The network keeps the directions worth the most loss, so the bigger-loss thing takes most of them:
+
+![A shared rank-20 network keeps 15 directions for the bigger loss and 5 for the smaller](figures/directions.png)
 
 ## Do not expect longer training to fix it
+
+![Shared network follows the own learning curve stretched by a fixed factor](figures/curves.png)
 
 | P at 6k / 12k / 24k steps | |
 |---|---|
@@ -56,6 +64,8 @@ The same teacher, trained for 300 steps (own error barely improves with size) an
 > **More weights help the smaller thing only when it has stopped needing them itself.**
 
 ## Divide each loss by its own size
+
+![Plain sum against each loss divided by its own size](figures/fix.png)
 
 Dividing each thing's loss by its own typical size removed the effect of the gap: P − 1 exceeded 0.1 in 1 of 25 driving runs. One network per thing also removes it, when each part is big enough and sees what its thing reacts to.
 
@@ -78,6 +88,8 @@ Dividing each thing's loss by its own typical size removed the effect of the gap
 Untested predictions for large systems (pedestrians in driving models, router balance in mixture-of-experts models, multi-token prediction heads) are in [section 13 of the paper](paper/paper.html#s13).
 
 ## Setup
+
+![The four worlds](figures/worlds.svg)
 
 Four small worlds, MLPs (depth 1–4), GRUs and a few transformers from 360 to 142,000 weights, Adam with the learning rate decayed to zero, 3,000–24,000 steps. Every shared network is compared with one network per thing at equal total weights. Each run takes 2–9 seconds on a laptop CPU.
 
