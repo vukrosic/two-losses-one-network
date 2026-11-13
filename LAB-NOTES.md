@@ -1,7 +1,7 @@
 # Lab notes
 
 > [!NOTE]
-> These are the raw research notes, kept in the order they were written. Predictions were written before each run. Early sections use the speed gap r and a yes/no rule; findings 19–22 replace them with the loss-ratio law in the README. Script paths such as `toy/drive.py` refer to the `toy/` folder of this repo.
+> These are the raw research notes, kept in the order they were written. Predictions were written before each run. Early sections use the speed gap r and a yes/no rule; findings 19–22 replace them with the loss-ratio law in the README. Script paths such as `experiments/drive.py` refer to the `experiments/` folder of this repo.
 
 ## 1 vs 2 predictor networks
 
@@ -57,7 +57,7 @@ When a world model predicts another agent, should that agent get its own predict
 
 **Status as of 2026-11-12:** strong enough for a workshop paper. For ICML it needs scale, the explanation of r, a planning result, and a clear step beyond the multi-task loss-imbalance literature.
 
-## Setup (toy)
+## Setup (experiments)
 
 - **Dots:** the robot (we steer it) and one other agent, the stranger. The stranger is the Statue (still), the Circler (patrol), the Chaser (chase) or the Switcher (switch: patrol or chase, flipping at hidden times every 6 to 14 steps).
 - **Picture and encoders:** a 16×16 picture, each dot in its own colour. Each dot has its own encoder (16 numbers each, 32 in all), so the pixels are already split by dot.
@@ -185,7 +185,7 @@ C, the stranger's speed. The robot's numbers move 0.322 per step (typical size) 
 - **Scaled + big held in every test:** the gap was ≤0.02 at 122k with a slow stranger, with 250 clips, and 5 steps ahead.
 - **New catch, 5 steps ahead:** if the stranger's own network does not see the robot's moves, the 2 networks lose (16k: 0.14 vs 0.07 for 1 network). The Chaser follows the robot, so over 5 steps it needs to know where the robot went. One step ahead, the moves made no difference (finding 3).
 - The equal-speed setting (0.04) still has the robot moving 1.7× more, because the robot's numbers move more per pixel than the stranger's. "Speed" should be read as movement in the model's numbers, not on screen.
-- Code: `PSPEED=` sets the stranger's speed and `AHEAD=` the steps ahead in toy/two_vs_one.py. The world default is unchanged.
+- Code: `PSPEED=` sets the stranger's speed and `AHEAD=` the steps ahead in experiments/two_vs_one.py. The world default is unchanged.
 
 **Rule for the Chaser so far:**
 1. With the plain loss, a shared network misses about R× as much of the stranger, where R is how many times more the robot's numbers move. Size, longer training and more steps ahead do not remove it.
@@ -316,7 +316,7 @@ Extra test: why r and not r²? The loss counts squared changes, so plain gradien
 
 ## Driving toy: car + pedestrian, MLP and transformer. Predictions written before running
 
-Setup (`toy/drive.py`, no world.py change):
+Setup (`experiments/drive.py`, no world.py change):
 - **Car** (the robot): x, y, vx, vy; throttle and steer inputs; smooth random driving, lane keeping, brakes when the pedestrian is ahead and close.
 - **Pedestrian** (the other agent): walks across the road at 0.006 per step, turns back at the far kerb, slows to a stop when the car is within about 0.15.
 - Both are tracked as 4 numbers each, like an object-tracking stack (no pixels, no encoder). Input: last 3 frames of both + the car's 2 controls.
@@ -376,7 +376,7 @@ Pedestrian speed sweep, MLP 8k, plain:
 - The "hard part" (change minus a constant-velocity guess) is 4.4× bigger for the car, yet the penalty was only 1.6–1.8×.
 - **New candidate:** the pedestrian's hard part is *event-like*. 52% of it falls in the top 5% of steps (stops and turnarounds), against 20% for the car. Rare events may get less of the loss's tilt.
 
-`toy/drive.py` was rewritten to take more knobs. The default numbers moved a little because the random draws are now in a different order (medium MLP pedestrian penalty 1.8× instead of 1.6×), so every grid row is compared with fresh default runs.
+`experiments/drive.py` was rewritten to take more knobs. The default numbers moved a little because the random draws are now in a different order (medium MLP pedestrian penalty 1.8× instead of 1.6×), so every grid row is compared with fresh default runs.
 
 Measured before training (rms per step, from the simulator):
 
@@ -660,13 +660,13 @@ Dot world, chaser (r 2.05), 12k steps, long training:
 
 ## Code and data
 
-- **toy/train_one.py** trains one full model in about 10 s and saves `tag.pt`. Example: `python3 toy/train_one.py . enc_chase chase factored 600 0.001 per_dot=1`
-- **toy/two_vs_one.py** trains fresh 2-network and 1-network predictors on that frozen encoder.
-  - Example: `python3 toy/two_vs_one.py . enc_chase chase factored 0.001 6000 1000 49,49,77`
+- **experiments/train_one.py** trains one full model in about 10 s and saves `tag.pt`. Example: `python3 experiments/train_one.py . enc_chase chase factored 600 0.001 per_dot=1`
+- **experiments/two_vs_one.py** trains fresh 2-network and 1-network predictors on that frozen encoder.
+  - Example: `python3 experiments/two_vs_one.py . enc_chase chase factored 0.001 6000 1000 49,49,77`
   - The env var `SW` / `RW` weights the stranger / robot error, and `NET=split|single` runs only one of the two.
-- **toy/pull.py** measures the robot's and stranger's gradient pull on a shared network.
-- **toy/two_vs_one.jsonl** holds every 2-vs-1 result so far.
-- **toy/drive.py** is the car + pedestrian toy, with MLP or transformer and split or single. Example: `NORM=agent PED=0.006 python3 toy/drive.py split mlp m`. Results are in **toy/drive.jsonl**. The first 3 plain rows with `"norm": false` are from before the shared-constant fix.
+- **experiments/pull.py** measures the robot's and stranger's gradient pull on a shared network.
+- **experiments/two_vs_one.jsonl** holds every 2-vs-1 result so far.
+- **experiments/drive.py** is the car + pedestrian toy, with MLP or transformer and split or single. Example: `NORM=agent PED=0.006 python3 experiments/drive.py split mlp m`. Results are in **experiments/drive.jsonl**. The first 3 plain rows with `"norm": false` are from before the shared-constant fix.
 
 ## Log
 
@@ -678,20 +678,20 @@ Dot world, chaser (r 2.05), 12k steps, long training:
   - Size sweep from 3k to 122k weights (finding 9): the plain-loss gap stays at 2×, and the scaled gap fades to 0.01.
   - Ablations (finding 10): longer training, 250 clips, stranger speed, 5 steps ahead. The plain penalty ≈ movement ratio, and scaled + big held everywhere. Wall times were 2–3× the usual because another program's 5 Python workers loaded the CPU; run sizes were unchanged.
   - Other strangers (finding 11): scaled + big ties for all; the full R× plain penalty appears only for the easy-to-predict Chaser.
-  - Knobs and formulas (finding 12): robot speed, random push, Flee and Orbit. "r× on the learnable part" fits best; r² is wrong. Code: `RSPEED=`, `NOISE=`, `MODE=flee|orbit` in toy/two_vs_one.py; toy/score.py scores the formulas.
+  - Knobs and formulas (finding 12): robot speed, random push, Flee and Orbit. "r× on the learnable part" fits best; r² is wrong. Code: `RSPEED=`, `NOISE=`, `MODE=flee|orbit` in experiments/two_vs_one.py; experiments/score.py scores the formulas.
   - Unpredictable part (finding 13): the oracle shows Instant's leftover is a plateau, not hidden information; Orbit's is partly the hidden angle. The SGD test showed Adam is not why the penalty is r. Code: `ORACLE=1`, `OPT=sgd`.
   - Paper plan written (three tiers, claims, exceptions).
   - Driving toy (finding 14), with car + pedestrian and MLP + transformer. In both architectures the slower pedestrian pays in a shared network, and the penalty grows with r. It is about r^0.3, not r×, and scaling + size does not give a tie: splitting wins here.
-  - Capacity size sweep (finding 18). In driving, the pedestrian loses at 0.4k–3k weights, ties at 8k and the car pays more from 28k, exactly where the pedestrian's own error stops falling. In the dot world, the chaser's own error keeps falling up to 122k and the chaser loses at every size (P 1.65–2.0). The threshold is that the slower thing loses while 3× more weights still cut its own error by about a third. Code: sizes `xs`, `sm`, `ml` in toy/drive.py.
-  - Long-training reruns and factor test (finding 17). The rule holds in 15 of 25 well-trained settings: all dot-world ones and every case with r ≥ 7.4, but not default driving. The old driving pedestrian-only penalty was mostly end-of-training jitter: weight averaging or a bigger batch in the same 6k steps removes most of it. Code: `BATCH=`, `AVG=` in toy/drive.py.
-  - Capacity-split theory and long training (finding 16). Driving and arm networks at 6,000 constant-lr steps were undertrained. With 24,000 steps and cosine decay, the arm and driving penalties shrink to 1.06–1.9×, while the dot world stays 2×. The shared dot-world network acts like a split that gives the chaser 10% of the weights, against 20% for the loss-optimal split. Code: `DECAY=1`, `LR=`, a numeric size (exact width) and the `mse` / `cv_base` fields in toy/drive.py; `DECAY=1` in toy/two_vs_one.py; toy/capsplit.py.
-  - Knob grid (finding 15), with weaving pedestrians, an arm robot, 2–3 pedestrians, a random push, L1 and a GRU. Robot parts behave like separate things. L1 does not fix it. Both explanations of r^0.3 failed. The GRU broke the rule at small sizes, where the separate networks were too small to learn, so the rule now carries "once each separate network is big enough to learn its thing". Code: `WORLD=arm`, `PEDS=`, `CURVE=`, `PNOISE=`, `LOSS=l1`, `ARCH=gru` in toy/drive.py.
+  - Capacity size sweep (finding 18). In driving, the pedestrian loses at 0.4k–3k weights, ties at 8k and the car pays more from 28k, exactly where the pedestrian's own error stops falling. In the dot world, the chaser's own error keeps falling up to 122k and the chaser loses at every size (P 1.65–2.0). The threshold is that the slower thing loses while 3× more weights still cut its own error by about a third. Code: sizes `xs`, `sm`, `ml` in experiments/drive.py.
+  - Long-training reruns and factor test (finding 17). The rule holds in 15 of 25 well-trained settings: all dot-world ones and every case with r ≥ 7.4, but not default driving. The old driving pedestrian-only penalty was mostly end-of-training jitter: weight averaging or a bigger batch in the same 6k steps removes most of it. Code: `BATCH=`, `AVG=` in experiments/drive.py.
+  - Capacity-split theory and long training (finding 16). Driving and arm networks at 6,000 constant-lr steps were undertrained. With 24,000 steps and cosine decay, the arm and driving penalties shrink to 1.06–1.9×, while the dot world stays 2×. The shared dot-world network acts like a split that gives the chaser 10% of the weights, against 20% for the loss-optimal split. Code: `DECAY=1`, `LR=`, a numeric size (exact width) and the `mse` / `cv_base` fields in experiments/drive.py; `DECAY=1` in experiments/two_vs_one.py; experiments/capsplit.py.
+  - Knob grid (finding 15), with weaving pedestrians, an arm robot, 2–3 pedestrians, a random push, L1 and a GRU. Robot parts behave like separate things. L1 does not fix it. Both explanations of r^0.3 failed. The GRU broke the rule at small sizes, where the separate networks were too small to learn, so the rule now carries "once each separate network is big enough to learn its thing". Code: `WORLD=arm`, `PEDS=`, `CURVE=`, `PNOISE=`, `LOSS=l1`, `ARCH=gru` in experiments/drive.py.
 
 ## Finding 19: speed gap vs capacity (predictions written before the runs, 2026-11-12)
 
 **Question.** Is there one rule linking the speed gap r and the network size at which the slower thing stops losing?
 
-**Knob.** `CARSCALE=a` in toy/drive.py measures the car in a× bigger units. The motion, the pedestrian and the interaction are identical; only r changes (r = 5.2a). Slowing the pedestrian instead (PED=0.003) made the pedestrian hard to learn even alone (own error 0.95 of the constant-velocity guess at 90k weights, 6,000 steps), which mixes r with task difficulty.
+**Knob.** `CARSCALE=a` in experiments/drive.py measures the car in a× bigger units. The motion, the pedestrian and the interaction are identical; only r changes (r = 5.2a). Slowing the pedestrian instead (PED=0.003) made the pedestrian hard to learn even alone (own error 0.95 of the constant-velocity guess at 90k weights, 6,000 steps), which mixes r with task difficulty.
 
 **Protocol.** Driving MLP, 6,000 steps, cosine decay, batch 256. a = 0.5, 1, 2, 4, 8 (r 2.6, 5.2, 10.4, 21, 42). Sizes xs, s, sm, m, ml, l (0.4k to 90k weights). P = pedestrian error shared ÷ own. Flip size N*(r) = the smallest size where the pedestrian's P ≤ the car's P.
 
@@ -723,7 +723,7 @@ Dot world, chaser (r 2.05), 12k steps, long training:
 
 ## Finding 20: does "extra error depends on r^k / N" hold everywhere? (predictions before the runs, 2026-11-12)
 
-Same protocol as finding 19 (6,000 decayed steps, sizes xs–ml fitted, gaps ×0.5–×8 by `CARSCALE`, `TAG=` per scenario, fit with toy/gapfit.py). k is the exponent of r that trades against N.
+Same protocol as finding 19 (6,000 decayed steps, sizes xs–ml fitted, gaps ×0.5–×8 by `CARSCALE`, `TAG=` per scenario, fit with experiments/gapfit.py). k is the exponent of r that trades against N.
 
 | Scenario | Knob | Prediction for k | Why |
 |---|---|---|---|
@@ -773,9 +773,9 @@ Law fitted on finding 20's 14 depth-2 MLP scenarios: **P − 1 = 0.149 · Λ^0.7
 
 **Training length does not change P** (driving, sizes m and ml, cosine decay, P at 6k / 12k / 24k steps): r 5.3: 1.30 / 1.33 / 1.41; r 10.5: 1.81 / 1.81 / 1.72; r 21: 3.39 / 3.04 / 3.08 (m) and 1.83 / 2.02 / 2.03 (ml). Both errors fall about 6× over that range; the shared network learns the slower thing at a fixed fraction of the speed (about half at r 21, size m). The step curves also showed that the pedestrian alone reaches 0.06–0.10 at 18k steps even at 360 weights, so the earlier "own error stops falling at 8k weights" (finding 19) was a 6,000-step limit, not a capacity limit. Yet the bigger shared network still slows it less (m 3.08 vs ml 2.03 at 24k, same own error 0.029 vs 0.028).
 
-**Direction checks over every grid** (toy/monotone.py, a break must exceed 0.15 in P): P rises with the gap in 1,057 of 1,066 pairs (the 9 breaks are depth 1 and per-thing scaling, which is flat by design). P falls with size in 520 of 558 pairs; the breaks are mostly the smallest gap, where P ≈ 1, and per-thing scaling.
+**Direction checks over every grid** (experiments/monotone.py, a break must exceed 0.15 in P): P rises with the gap in 1,057 of 1,066 pairs (the 9 breaks are depth 1 and per-thing scaling, which is flat by design). P falls with size in 520 of 558 pairs; the breaks are mostly the smallest gap, where P ≈ 1, and per-thing scaling.
 
-**Rules table** (toy/rules.py; 6,000 decayed steps unless noted; law offset = measured ÷ 0.149 Λ^0.77, median over the setting):
+**Rules table** (experiments/rules.py; 6,000 decayed steps unless noted; law offset = measured ÷ 0.149 Λ^0.77, median over the setting):
 
 | Setting | gap exponent (P − 1 ∝ r^x) | size exponent (P − 1 ∝ N^y) | own-error size slope of the slower thing | law offset |
 |---|---|---|---|---|
@@ -808,7 +808,7 @@ Law fitted on finding 20's 14 depth-2 MLP scenarios: **P − 1 = 0.149 · Λ^0.7
 4. **Training length does not change P** while the slower thing is still learning (6k–24k steps, ±0.15).
 5. **Per-thing loss scaling removes the gap effect.**
 
-**Weak spots.** One run per point (runs are deterministic; P differs by about ±0.15 between neighbouring settings). The size rule is a correlation plus one direct test. The GRU constant is 8× lower and its slope 0.5; the transformer was not tested (too slow for 10 s runs). SGD diverged above rate 0.001 and learned almost nothing below it in driving. Code: toy/allfit.py, toy/formfit.py, toy/effsteps.py, toy/steptrend.py, toy/dotgrid.py, toy/rules.py, toy/monotone.py; `OPT=muon`, `MUONLR=` in toy/drive.py; `LATSCALE=`, `LATTHING=` in toy/two_vs_one.py.
+**Weak spots.** One run per point (runs are deterministic; P differs by about ±0.15 between neighbouring settings). The size rule is a correlation plus one direct test. The GRU constant is 8× lower and its slope 0.5; the transformer was not tested (too slow for 10 s runs). SGD diverged above rate 0.001 and learned almost nothing below it in driving. Code: experiments/allfit.py, experiments/formfit.py, experiments/effsteps.py, experiments/steptrend.py, experiments/dotgrid.py, experiments/rules.py, experiments/monotone.py; `OPT=muon`, `MUONLR=` in experiments/drive.py; `LATSCALE=`, `LATTHING=` in experiments/two_vs_one.py.
 
 **Follow-up predictions (written before the runs, 2026-11-12).**
 
@@ -827,11 +827,11 @@ Law fitted on finding 20's 14 depth-2 MLP scenarios: **P − 1 = 0.149 · Λ^0.7
 | Training length, dot world (Chase, width 32, gap ×4) | held: P 3.78 / 3.82 / 3.70 at 6k / 12k / 24k |
 | Training length, arm world (size m, gap ×4) | broken: P 2.75 / 2.20 / 1.67, because the base's own error stops falling (0.016 / 0.010 / 0.009). Driving size s at gap ×4 also falls at 24k (3.39 / 6.75 / 8.01 / 4.52 at 3k / 6k / 12k / 24k) once its own error nears its floor. |
 
-**Fixed-slowdown model (toy/slowdown.py, toy/fslow.py).** The shared network learns the slower thing F× slower: its error after S steps equals the own network's error after S/F steps, with F constant over training. F measured at 6k predicts the shared error at 12k and 24k within ×0.80–1.15 (driving m), ×0.83–1.40 (driving s) and ×1.11–1.34 (arm). This explains rule 4: if the own error falls like S^−α, then P = F^α stays constant while the slower thing is learning. P → 1 once its own error reaches a floor that more steps cannot remove. Over 136 driving and arm runs (8 settings), F − 1 = 11 (Λ/N)^0.47 (R² 0.79), with offsets ×0.8–1.3, except the GRU at ×0.31. The direct P law on the same runs fits better: P − 1 = 20.7 (Λ/N)^0.52 (R² 0.86). In the teacher world (finding 22), F does not follow Λ (R² 0.05), so P, not F, is the variable to model. The step slope α does not replace size either (adding it leaves R² at 0.895).
+**Fixed-slowdown model (experiments/slowdown.py, experiments/fslow.py).** The shared network learns the slower thing F× slower: its error after S steps equals the own network's error after S/F steps, with F constant over training. F measured at 6k predicts the shared error at 12k and 24k within ×0.80–1.15 (driving m), ×0.83–1.40 (driving s) and ×1.11–1.34 (arm). This explains rule 4: if the own error falls like S^−α, then P = F^α stays constant while the slower thing is learning. P → 1 once its own error reaches a floor that more steps cannot remove. Over 136 driving and arm runs (8 settings), F − 1 = 11 (Λ/N)^0.47 (R² 0.79), with offsets ×0.8–1.3, except the GRU at ×0.31. The direct P law on the same runs fits better: P − 1 = 20.7 (Λ/N)^0.52 (R² 0.86). In the teacher world (finding 22), F does not follow Λ (R² 0.05), so P, not F, is the variable to model. The step slope α does not replace size either (adding it leaves R² at 0.895).
 
 ## Finding 22: a third world with no physics, teacher and student (predictions before the grid, 2026-11-12)
 
-`toy/teacher.py`: input x ~ N(0, I₁₆), fresh samples every step. Fast target = a × (random 2-layer tanh teacher, 32 hidden). Slow target = a second random teacher with HS hidden units (std 1). The student is a depth-2 MLP, shared (8 outputs) or split (two students, equal total weights). 3,000 cosine-decayed steps, about 2 s per run. Gap r = a.
+`experiments/teacher.py`: input x ~ N(0, I₁₆), fresh samples every step. Fast target = a × (random 2-layer tanh teacher, 32 hidden). Slow target = a second random teacher with HS hidden units (std 1). The student is a depth-2 MLP, shared (8 outputs) or split (two students, equal total weights). 3,000 cosine-decayed steps, about 2 s per run. Gap r = a.
 
 Precondition, split student, own error of the slow target at widths 8 → 128: easy teacher (HS = 2) 0.047 → 0.0024 (log size slope 0.68, still falling fast); hard teacher (HS = 256) 0.29 → 0.135 (slope 0.17). With noise 0.1 added to the easy target, the own error flattens at about 0.01 (slope near 0).
 
@@ -873,7 +873,7 @@ Precondition, split student, own error of the slow target at widths 8 → 128: e
 
 **Dot world with a push on the stranger, result:** held at the edge. At gap ×4, P is 1.53 / 1.55 / 1.51 / 1.35 / 1.19 for widths 8–128 (N^−0.29), against N^+0.07 without the push. At gap ×1 it is 1.20 / 1.19 / 1.14 / 1.11 / 1.00.
 
-**Size exponent at fixed Λ, every setting (toy/regime.py).** Fit per setting: log(P − 1) = a + b log Λ + c log N. σ = how fast the slower thing's own error falls with size.
+**Size exponent at fixed Λ, every setting (experiments/regime.py).** Fit per setting: log(P − 1) = a + b log Λ + c log N. σ = how fast the slower thing's own error falls with size.
 
 | Group | Settings | c (size exponent at fixed Λ) | b (Λ exponent) |
 |---|---|---|---|
@@ -903,7 +903,7 @@ Rejected explanations for the size effect: separate inputs, finite data, input s
 
 **What is predicted, exactly.** P₁ = the next-token head's excess loss in the model trained with future heads ÷ its excess loss in the same model trained on next-token prediction only. Excess loss = cross-entropy − the true entropy, the part a model can still learn; the data come from a Markov chain, so the true entropy of every future token is known exactly. The input is Λ₁ = (sum of the future heads' loss terms) ÷ (the next-token term) = W × mean(L₂..L_K) ÷ L₁, each L from a model trained on that head alone at the same width.
 
-**World and model:** order-2 Markov chain over 64 tokens with random Dirichlet rows (concentration 0.5, token frequencies 1/rank), fresh sequences every step. Transformer with 2 layers, widths 32 / 64 / 128, RoPE, QK-norm, SwiGLU, RMSNorm, Adam with cosine decay to zero, 1,500 steps. Loss = CE₁ + W · mean(CE₂..CE_K). Code: `toy/mtp.py`, runs: `toy/mtp_runs.sh`, scoring: `toy/mtpfit.py` (fixed law, no refit).
+**World and model:** order-2 Markov chain over 64 tokens with random Dirichlet rows (concentration 0.5, token frequencies 1/rank), fresh sequences every step. Transformer with 2 layers, widths 32 / 64 / 128, RoPE, QK-norm, SwiGLU, RMSNorm, Adam with cosine decay to zero, 1,500 steps. Loss = CE₁ + W · mean(CE₂..CE_K). Code: `experiments/mtp.py`, runs: `experiments/mtp_runs.sh`, scoring: `experiments/mtpfit.py` (fixed law, no refit).
 
 | # | Prediction | Test |
 |---|---|---|

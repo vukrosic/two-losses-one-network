@@ -109,7 +109,7 @@ What we predict:
 
 > **If these hold, one cheap measurement tells you how much a multi-token prediction head weight costs next-token prediction.**
 
-Run `bash toy/mtp_runs.sh 0` to time two runs, then stages 1–4, then `python3 toy/mtpfit.py` to score the predictions.
+Run `bash experiments/mtp_runs.sh 0` to time two runs, then stages 1–4, then `python3 experiments/mtpfit.py` to score the predictions.
 
 ## To do
 
@@ -119,7 +119,7 @@ Run `bash toy/mtp_runs.sh 0` to time two runs, then stages 1–4, then `python3 
 | Λ needs the separate networks trained first | prediction 4: Λ from 1/8 of training |
 | The constant moves with depth (×2.4), Muon (×1.7) and GRUs (×0.12) | report one constant per architecture and optimizer; test whether excess-loss Λ removes the shifts |
 | A plain sum of unnormalized losses is rare in practice | multi-token prediction uses a fixed head weight with no normalization |
-| Networks up to 142,000 weights, toy worlds only | a language model on real text after the toy |
+| Networks up to 142,000 weights, small simulated worlds only | a language model on real text |
 | The harm is not shown to matter downstream | planning failures in the driving world |
 | The theory covers linear networks; the 0.75 exponent is not derived | derive the exponent |
 | The law was fitted on the grids the exploration ran on | score every new test with the fixed law, no refit |
@@ -133,7 +133,7 @@ Four small worlds, MLPs (depth 1–4), GRUs and a few transformers from 360 to 1
 - [paper/paper.html](paper/paper.html): the full paper, with proofs
 - [RESULTS.md](RESULTS.md): every table, the commands and the knobs
 - [LAB-NOTES.md](LAB-NOTES.md): raw notes with predictions written before each run
-- [toy/](toy/): the four worlds, the fits and every run (`*.jsonl`); [charts.py](charts.py) draws every figure
+- [experiments/](experiments/): the four worlds, the fits and every run (`*.jsonl`); [charts.py](charts.py) draws every figure
 
 ## Cite
 

@@ -81,7 +81,7 @@ Driving and arm grids, 6,000 decayed steps unless noted. Gap exponent: P − 1 �
 
 Teacher world (3,000 steps): fresh data and separate inputs 0.147 Λ^0.74 (95 points); hard teacher with fresh data ×0.30, with fixed data ×0.19; separate inputs ×1.33; depth 2 / 3 / 4 offsets ×0.92 / ×1.06 / ×1.38.
 
-**Direction checks** (`toy/monotone.py`, a break must exceed 0.15 in P): P rises with the gap in 1,057 of 1,066 neighbouring pairs (the 9 breaks are depth 1 and per-thing scaling, which is flat by design). P falls with size in 520 of 558; most breaks are at the smallest gap, where P ≈ 1.
+**Direction checks** (`experiments/monotone.py`, a break must exceed 0.15 in P): P rises with the gap in 1,057 of 1,066 neighbouring pairs (the 9 breaks are depth 1 and per-thing scaling, which is flat by design). P falls with size in 520 of 558; most breaks are at the smallest gap, where P ≈ 1.
 
 ---
 
@@ -114,7 +114,7 @@ The shared network acts like separate networks that give the smaller thing 10% o
 
 ## 3. Theory check
 
-`P = ((1 + Λ^(1/β)) / 2)^(β − 1)` for the best rank-k linear network, when each thing's i-th direction is worth c·i^−β of loss. Checked by exact top-k selection over two lists of 200,000 directions (`toy/rankcheck.py`, under one second):
+`P = ((1 + Λ^(1/β)) / 2)^(β − 1)` for the best rank-k linear network, when each thing's i-th direction is worth c·i^−β of loss. Checked by exact top-k selection over two lists of 200,000 directions (`experiments/rankcheck.py`, under one second):
 
 | Λ | β = 2, k = 40 | β = 2, k = 400 | β = 3, k = 400 | β = 4, k = 400 | Formula, β = 2 / 3 / 4 | Measured law |
 |---|---|---|---|---|---|---|
@@ -142,13 +142,13 @@ P at 6,000 / 12,000 / 24,000 steps, each run with the learning rate decayed to z
 
 The arm breaks because its base reaches an error floor (own error 0.016 / 0.010 / 0.009). Driving size s falls at 24k for the same reason.
 
-**Fixed slowdown** (`toy/slowdown.py`, `toy/fslow.py`): the shared network's error on the smaller thing after S steps equals the own network's error after S/F steps, F constant over training. F measured at 6k predicts the shared error at 12k and 24k within ×0.80–1.15 (driving m), ×0.83–1.40 (driving s), ×1.11–1.34 (arm). If the own error falls like S^−α, P = F^α. F does not follow one law across worlds (teacher world: F against Λ has R² 0.05); P does.
+**Fixed slowdown** (`experiments/slowdown.py`, `experiments/fslow.py`): the shared network's error on the smaller thing after S steps equals the own network's error after S/F steps, F constant over training. F measured at 6k predicts the shared error at 12k and 24k within ×0.80–1.15 (driving m), ×0.83–1.40 (driving s), ×1.11–1.34 (arm). If the own error falls like S^−α, P = F^α. F does not follow one law across worlds (teacher world: F against Λ has R² 0.05); P does.
 
 ---
 
 ## 5. Network size
 
-Size exponent at fixed Λ (`toy/regime.py`, fit log(P − 1) = a + b log Λ + c log N per setting):
+Size exponent at fixed Λ (`experiments/regime.py`, fit log(P − 1) = a + b log Λ + c log N per setting):
 
 | Group | Settings | c (size at fixed Λ) | b (Λ exponent) |
 |---|---|---|---|
@@ -204,7 +204,7 @@ Driving, same 6,000 steps:
 
 ## How to run
 
-Everything runs on a CPU with Python 3, PyTorch, NumPy and Matplotlib. Run scripts from inside `toy/`. Each run appends one JSON line to a log in the current folder (`drive.jsonl`) or next to the script (`teacher.jsonl`).
+Everything runs on a CPU with Python 3, PyTorch, NumPy and Matplotlib. Run scripts from inside `experiments/`. Each run appends one JSON line to a log in the current folder (`drive.jsonl`) or next to the script (`teacher.jsonl`).
 
 ```bash
 cd toy
@@ -225,7 +225,7 @@ The dot world needs a trained encoder first: `python3 train_one.py` (see its doc
 
 ### Knobs
 
-**`toy/drive.py NET ARCH size [steps]`**, NET = `split` | `single`, ARCH = `mlp` | `tf` | `gru`, size = `xs` … `l` or a width.
+**`experiments/drive.py NET ARCH size [steps]`**, NET = `split` | `single`, ARCH = `mlp` | `tf` | `gru`, size = `xs` … `l` or a width.
 
 | Variable | Meaning |
 |---|---|
@@ -243,7 +243,7 @@ The dot world needs a trained encoder first: `python3 train_one.py` (see its doc
 | `DEPTH` | hidden layers of the MLP |
 | `OPT`, `MUONLR` | `adam`, `sgd` or `muon` (Muon on hidden matrices, Adam elsewhere) |
 
-**`toy/teacher.py split|single width [steps]`**
+**`experiments/teacher.py split|single width [steps]`**
 
 | Variable | Meaning |
 |---|---|
@@ -254,7 +254,7 @@ The dot world needs a trained encoder first: `python3 train_one.py` (see its doc
 | `NTRAIN` | fixed training set of this size instead of fresh samples |
 | `DEPTH`, `LR`, `BATCH`, `OPT`, `MUONLR`, `TAG` | as above |
 
-**`toy/two_vs_one.py`** (dot world): `LATSCALE=a` scales the robot's targets, `RW`/`SW` are the robot / stranger loss weights, `DECAY=1`, `NORM=1`, `NOISE` pushes the stranger, `MODE` changes the stranger's behaviour.
+**`experiments/two_vs_one.py`** (dot world): `LATSCALE=a` scales the robot's targets, `RW`/`SW` are the robot / stranger loss weights, `DECAY=1`, `NORM=1`, `NOISE` pushes the stranger, `MODE` changes the stranger's behaviour.
 
 ---
 

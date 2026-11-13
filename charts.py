@@ -1,4 +1,4 @@
-"""Draws every figure in figures/ from the run data in toy/*.jsonl and the tables in RESULTS.md.
+"""Draws every figure in figures/ from the run data in experiments/*.jsonl and the tables in RESULTS.md.
     python3 charts.py
 """
 import json, math, os, sys
@@ -8,11 +8,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOY = os.path.join(HERE, "toy")
+EXP = os.path.join(HERE, "experiments")
 OUT = os.path.join(HERE, "figures")
 os.makedirs(OUT, exist_ok=True)
-sys.path.insert(0, TOY)
-os.chdir(TOY)
+sys.path.insert(0, EXP)
+os.chdir(EXP)
 import allfit  # noqa: E402  (reads drive.jsonl from the cwd)
 
 BLUE, ORANGE, AQUA, YELLOW, VIOLET = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#6250d6"

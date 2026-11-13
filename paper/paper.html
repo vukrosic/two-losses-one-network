@@ -234,7 +234,7 @@ L<sub>A</sub>(θ<sub>2</sub>) + w<sub>2</sub> L<sub>B</sub>(θ<sub>2</sub>) ≤ 
 <li><b>Normalizing fixes it:</b> dividing each loss by its own size sets Λ = 1 and P = 1. This is claim 6.</li>
 </ul>
 <h4>Check</h4>
-<p>We checked the formula by keeping the top k of two explicit lists of 200,000 directions each (numpy, under one second, no training; <code>toy/rankcheck.py</code>).</p>
+<p>We checked the formula by keeping the top k of two explicit lists of 200,000 directions each (numpy, under one second, no training; <code>experiments/rankcheck.py</code>).</p>
 <div class="tbl"><table>
 <tr><th>Λ</th><th class="n">β = 2, k = 40</th><th class="n">β = 2, k = 400</th><th class="n">β = 3, k = 400</th><th class="n">β = 4, k = 400</th><th class="n">Formula, β = 2 / 3 / 4</th><th class="n">Measured law</th></tr>
 <tr><td>10</td><td class="n">2.16</td><td class="n">2.08</td><td class="n">2.47</td><td class="n">2.67</td><td class="n">2.08 / 2.49 / 2.68</td><td class="n">1.84</td></tr>
@@ -479,7 +479,7 @@ L<sub>A</sub>(θ<sub>2</sub>) + w<sub>2</sub> L<sub>B</sub>(θ<sub>2</sub>) ≤ 
 </ul>
 
 <h3>Code and data</h3>
-<p class="cap">Driving and arm worlds: <code>toy/drive.py</code>. Dot world: <code>toy/two_vs_one.py</code> with <code>toy/dots/</code>. Teacher world: <code>toy/teacher.py</code>. Hand split: <code>toy/capsplit.py</code>. Law fits: <code>toy/allfit.py</code>, <code>toy/lawfit.py</code>, <code>toy/teachfit.py</code>, <code>toy/dotgrid.py</code>. Size rule: <code>toy/regime.py</code>. Slowdown: <code>toy/slowdown.py</code>, <code>toy/fslow.py</code>. Theory check: <code>toy/rankcheck.py</code>. Every run: <code>toy/drive.jsonl</code>, <code>toy/teacher.jsonl</code>, <code>toy/two_vs_one.jsonl</code>. Figures: <code>charts.py</code>. Lab notes with predictions written before each run: <code>LAB-NOTES.md</code>.</p>
+<p class="cap">Driving and arm worlds: <code>experiments/drive.py</code>. Dot world: <code>experiments/two_vs_one.py</code> with <code>experiments/dots/</code>. Teacher world: <code>experiments/teacher.py</code>. Hand split: <code>experiments/capsplit.py</code>. Law fits: <code>experiments/allfit.py</code>, <code>experiments/lawfit.py</code>, <code>experiments/teachfit.py</code>, <code>experiments/dotgrid.py</code>. Size rule: <code>experiments/regime.py</code>. Slowdown: <code>experiments/slowdown.py</code>, <code>experiments/fslow.py</code>. Theory check: <code>experiments/rankcheck.py</code>. Every run: <code>experiments/drive.jsonl</code>, <code>experiments/teacher.jsonl</code>, <code>experiments/two_vs_one.jsonl</code>. Figures: <code>charts.py</code>. Lab notes with predictions written before each run: <code>LAB-NOTES.md</code>.</p>
 </main>
 </body>
 </html>
