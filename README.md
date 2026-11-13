@@ -102,4 +102,15 @@ Four small worlds, MLPs (depth 1–4), GRUs and a few transformers from 360 to 1
 - [LAB-NOTES.md](LAB-NOTES.md): raw notes with predictions written before each run
 - [toy/](toy/): the four worlds, the fits and every run (`*.jsonl`); [charts.py](charts.py) draws every figure
 
+## Cite
+
+```bibtex
+@misc{rosic2026twolosses,
+  author = {Rosić, Vuk},
+  title  = {Training one network on two losses added together hurts the thing with the smaller loss},
+  year   = {2026},
+  url    = {https://github.com/vukrosic/two-losses-one-network}
+}
+```
+
 MIT licence.
