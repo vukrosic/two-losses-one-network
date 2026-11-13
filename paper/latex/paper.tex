@@ -1,0 +1,798 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage[skins]{tcolorbox}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newtheorem{theorem}{Result}
+\newcommand{\Lam}{\Lambda}
+\newtcolorbox{takeaway}{enhanced,colback=green!4,colframe=green!45!black,boxrule=0pt,leftrule=3pt,arc=0pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\itshape}
+\newcommand{\para}[1]{\paragraph{#1}}
+
+\title{Training One Network on Two Losses Added Together Hurts the Thing With the Smaller Loss, and the Harm Grows With the Ratio of the Two Losses}
+\author{Vuk Rosi\'c\\[2pt]\small Code, data and figures: \url{https://github.com/vukrosic/two-losses-one-network}}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Many networks are trained on two losses added together. A self-driving world model predicts a fast car and a slow pedestrian, a robot model predicts a heavy base and a fast arm, and a mixture-of-experts language model adds a router balancing loss to its next-token loss. We show that the thing with the smaller loss is learned worse than it would be by its own network with the same total number of weights, and that one number predicts how much worse: the loss ratio $\Lam$, the bigger loss divided by the smaller one, each measured with its own network. Across 519 shared networks in four worlds (driving, a robot arm, two dots seen in pictures, and random teacher networks with no physics), the smaller-loss thing's extra error follows $P-1 \approx 0.15\,\Lam^{0.75}$ within a factor of 2.5 in 31 of 35 settings, where $P$ is its error in the shared network divided by its error in its own network. A loss 10 times bigger makes its error about 1.8 times larger; a loss 100 times bigger, about 6 times larger. The cause is the sum itself: a loss weight $a^2$ acts exactly like measuring that thing in units $a$ times bigger. We prove that at the best weights of any network a bigger loss can only take from a smaller one, and that in a shared linear network with limited capacity the harm is $P = \big((1+\Lam^{1/\beta})/2\big)^{\beta-1}$, which grows slower than $\Lam$ and does not depend on network size. Training longer does not remove the harm, because the shared network learns the smaller-loss thing a fixed factor slower from start to end. A bigger network helps only once the separate networks stop gaining from size. Dividing each loss by its own size, or giving each thing its own network, removes it.
+\end{abstract}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/shared_vs_split.pdf}
+\caption{Same total weights, same data. Only the shared network makes a larger error on the thing with the smaller loss (here the pedestrian).}
+\label{fig:shared}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/measure.pdf}
+\caption{How the two numbers are measured, with example values. (a) $\Lam$ compares the two losses, each from its own network. (b) $P$ compares the smaller-loss thing's error in one shared network of the same total size with its error in its own network.}
+\label{fig:measure}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/law.png}
+\caption{Every shared network in four worlds against the loss ratio. One line, $P-1 \approx 0.15\,\Lam^{0.75}$, fits driving, a robot arm, two dots in pictures and a world with no physics at all.}
+\label{fig:law}
+\end{figure}
+
+\section{What the problem is}
+\label{sec:problem}
+
+A self-driving car needs to know where everything will be a moment from now. Its world model looks at the last few moments and predicts the next one: where the car itself will be, and where the pedestrian at the crossing will be. The simplest design is one network that outputs everything.
+
+A network learns by lowering one number, the loss. The usual loss adds up the squared error of everything it predicts:
+\begin{multline*}
+\text{Loss} = (\text{car's predicted move} - \text{car's true move})^2 \\
++ (\text{pedestrian's predicted move} - \text{pedestrian's true move})^2 .
+\end{multline*}
+That sum does not care what is important; it only cares what is big. Figure~\ref{fig:mechanism} walks through one step with numbers. The car moves 5 units and the pedestrian 1 unit. If the network misses 10\% of each move, the car's squared error is 0.25 and the pedestrian's is 0.01, so 96\% of the loss comes from the car. Lowering the loss pays far more on the car, so the shared weights move to serve the car.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/mechanism.pdf}
+\caption{The mechanism. (a) Squared error makes the car 96\% of the loss. (b) In one shared network both errors pull on the same weights; with one network per thing they cannot.}
+\label{fig:mechanism}
+\end{figure}
+
+The same thing happens with any two losses added together, not only with moving objects. A language model that adds a small auxiliary loss to its main loss, or a multi-task model with one output in metres and another in millimetres, has the same sum.
+
+\para{What we measure.} We compare the shared network with the fairest alternative we know: the same total number of weights split into one network per thing, each trained only on its own loss, with the same data and training. Three numbers describe every experiment:
+\begin{itemize}
+\item \textbf{$P$, the penalty:} the smaller-loss thing's error on new data in the shared network, divided by its error with its own network. $P=2$ means twice the error; $P=1$ means no difference. $P-1$ is the extra error.
+\item \textbf{$\Lam$, the loss ratio:} the bigger thing's loss divided by the smaller thing's loss, each measured with its own network. This is how much bigger one term of the sum is than the other when each is learned as well as its own network can.
+\item \textbf{$r$, the gap:} how many times bigger the bigger thing's numbers are (for moving things, how many times farther it moves per step). With squared error, $\Lam$ grows roughly like $r^2$ times how much harder the bigger thing is to predict.
+\end{itemize}
+
+\section{Who adds losses together today, and prior work}
+\label{sec:related}
+
+\begin{table}[t]
+\centering\small
+\caption{Systems and methods that train one network on a sum of losses.}
+\label{tab:who}
+\begin{tabularx}{\linewidth}{@{}YYYY@{}}
+\toprule
+Work & What is added together & How the sizes are handled & Smaller term compared with its own network? \\
+\midrule
+Scene Transformer, Wayformer, MotionLM, UniAD \citep{ngiam2022scene,nayakanti2022wayformer,seff2023motionlm,hu2023uniad} & errors of every car, cyclist and pedestrian in a driving scene & one loss over all agents & no \\
+GAIA-1 \citep{hu2023gaia}, DreamerV3 \citep{hafner2023dreamerv3} & everything in the scene, in one world model & DreamerV3 squashes large targets (symlog) and normalizes returns & no \\
+Diffusion Policy \citep{chi2023diffusion} and most robot policies & actions of several joints and grippers & each action dimension rescaled to $[-1,1]$ & no \\
+Switch Transformer \citep{fedus2022switch} & next-token loss + router balancing loss & balancing loss times a small weight (0.01) & no \\
+DeepSeek-V3 \citep{deepseek2024v3} & next-token loss + multi-token prediction loss & extra loss times 0.3, then 0.1; router balanced without an auxiliary loss & no \\
+GradNorm, uncertainty weighting, PCGrad \citep{chen2018gradnorm,kendall2018multi,yu2020pcgrad} & several task losses & weights or gradients rebalanced during training & reported per task, no law for the size of the harm \\
+PopArt \citep{vanhasselt2016popart,hessel2019popart} & value targets of several games & targets normalized as training runs & shown to help; no law \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The field knows that a bigger loss can crowd out a smaller one (Table~\ref{tab:who}). \citet{kendall2018multi} note that the best weighting depends on the units, and many systems rescale their targets for this reason.
+
+\para{The effect itself is known.} \citet{khakhar2022neural} show that with squared error, a regression target at a bigger scale swamps a smaller one: scaling a target by $z$ scales its gradient by $z^2$, and a network of limited size then predicts the small-scale target poorly. They fix it with a histogram loss. They do not compare against a network per target of the same size, and they give no law for how much the small target loses.
+
+\para{The fix is known.} PopArt \citep{vanhasselt2016popart} normalizes value targets as training runs, and \citet{hessel2019popart} use it to stop games with large rewards from dominating one shared agent. This is the same idea as dividing each loss by its own size (claim 6). DB-MTL \citep{lin2023dbmtl} balances task losses on a log scale for the same reason.
+
+\para{Shared models acting like smaller ones.} \citet{fernandes2023scaling} find that in multilingual translation, a model trained on two languages acts like a single-language model with a fraction of the weights, and that fraction is set by each language's share of the training data and does not depend on model size. Our hand split (Section~\ref{sec:cause}) measures the same kind of fraction, set by the loss ratio instead of the data share. \citet{shaham2023causes} find that interference between languages is strongest when the model is small relative to the data, and \citet{aghajanyan2023scaling} add a competition term to scaling laws for mixed-modality training.
+
+\para{Why big parts are learned first.} Gradient descent learns large directions of a target before small ones in deep linear networks \citep{saxe2014exact,lampinen2019analytic}, which underlies claim 4. \citet{michaud2023quantization} model scaling as a limited network learning the most valuable pieces first, the same picture as our rank-$k$ result (Section~\ref{sec:rank}), which rests on the Eckart--Young theorem \citep{eckart1936approximation}.
+
+\para{What is new here.}
+(1) The harm predicted from one measurable number, the loss ratio $\Lam$, with one law, $P-1\approx 0.15\,\Lam^{0.75}$, across four worlds and several network types.
+(2) A same-size comparison of one shared network against one network per term.
+(3) A closed form for a rank-$k$ linear network, $P = \big((1+\Lam^{1/\beta})/2\big)^{\beta-1}$.
+(4) The finding that the shared network follows each term's own learning curve slowed by a fixed factor, so training longer does not help.
+(5) The condition under which size helps: only once the separate networks stop gaining from size. \citet{fernandes2023scaling} find the fraction independent of size in a data-weight setting; we find both regimes and switch between them with one knob.
+(6) A constant learning rate inflating the measured harm up to 3 times.
+
+\section{The claims}
+\label{sec:claims}
+
+\begin{table}[h]
+\centering\small
+\caption{The claims of this paper, how general each is, and where it is tested.}
+\label{tab:claims}
+\begin{tabularx}{\linewidth}{@{}lYYl@{}}
+\toprule
+\# & Claim & How general & Section \\
+\midrule
+1 & Loss ratio: the smaller-loss thing's extra error is $P-1\approx 0.15\,\Lam^{0.75}$. & within $\times2.5$ in 31 of 35 settings in four worlds; all misses fall below the line & \ref{sec:ratio} \\
+2 & Cause: the sum gives the bigger loss the weights; a loss weight $a^2$ does what measuring in $a\times$ bigger units does. & weight and units matched in two worlds; hand split in the dot world & \ref{sec:cause} \\
+3 & Theory: at the best weights a bigger loss can only take from a smaller one (any network); in a shared linear network the harm grows slower than $\Lam$ and does not depend on size. & proved; checked numerically & \ref{sec:theory} \\
+4 & Training longer leaves $P$ unchanged while the smaller-loss thing is still learning, because the shared network learns it a fixed factor slower. & driving and the dot world; breaks once the thing reaches its error floor & \ref{sec:steps} \\
+5 & A bigger network lowers $P$ beyond $\Lam$ only once the separate networks stop gaining from more weights. & three direct switches; no single threshold across worlds & \ref{sec:size} \\
+6 & Fix: dividing each loss by its own size, or one network per thing, removes the harm. & per-thing scaling: $P-1$ above 0.1 in 1 of 25 runs & \ref{sec:fix} \\
+7 & A constant learning rate makes the harm look up to 3 times larger. & arm and driving; not in the dot world & \ref{sec:lr} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Claims 1, 2, 3 and 6 held everywhere we looked. Claims 4, 5 and 7 are when-it-applies rules: each holds under a condition we name.
+
+\section{Setup}
+\label{sec:setup}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/worlds.pdf}
+\caption{The four worlds. Blue marks the thing with the bigger loss and orange the thing with the smaller loss. The teacher world has no physics, so the rule cannot depend on motion.}
+\label{fig:worlds}
+\end{figure}
+
+\para{Four worlds} (Figure~\ref{fig:worlds}).
+\begin{itemize}
+\item \textbf{Driving.} A car on a two-lane road speeds up, slows, steers, keeps its lane and brakes for pedestrians. A pedestrian crosses, turns back and stops when the car comes close. Each is four numbers (position and velocity). By default the car moves 5.2 times farther per step. Knobs: the car's units (which sets the gap), pedestrian speed, weaving, random pushes, 1--3 pedestrians.
+\item \textbf{Robot arm.} One robot: a heavy base slides slowly and an arm swings fast. Base and arm tip are the two things.
+\item \textbf{Two dots.} A $16\times16$ picture with two dots: a robot we steer and a stranger with its own behaviour (stands still, walks a circle, chases, flees, circles the robot, walks a fixed path, or switches between walking and chasing). A frozen encoder turns each dot into 16 numbers, and the network predicts those.
+\item \textbf{Teacher networks, no physics.} The input is 16 random numbers. Each target is the output of a fixed random two-layer network (the teacher). One target is multiplied by $a$, the gap. Fresh samples every step, so nothing can be memorized. This world tests whether the rule needs physics or motion at all.
+\end{itemize}
+
+\para{Networks and training.} Mostly MLPs with 2 hidden layers, also depth 1, 3 and 4, GRUs and a few transformers, from 360 to 142,000 weights. Adam at learning rate 0.001, batch 256, with the learning rate decayed smoothly to zero (cosine) unless stated. Most grids train for 6,000 steps (driving, arm, dots) or 3,000 steps (teacher); each run takes 2--9 seconds on a laptop CPU. Errors are measured on data the networks never saw: in driving, relative to the guess ``keeps its current velocity''; in the teacher world, relative to the target's variance.
+
+Each run is deterministic. Neighbouring settings differ by about $\pm0.15$ in $P$, which we treat as the noise level.
+
+\begin{table}[h]
+\centering\small
+\caption{The tests and the claim each one checks.}
+\label{tab:tests}
+\begin{tabularx}{\linewidth}{@{}YYl@{}}
+\toprule
+Test & What it tells & Claim \\
+\midrule
+Shared vs one network per thing, equal weights, across gap and size & $P$ and $\Lam$ at every point & 1 \\
+Fit the law in driving, then score it with no refit in three other worlds & whether one line holds beyond the world it was fitted on & 1 \\
+Loss weight $a^2$ against units $\times a$ & whether the loss scale alone is the cause & 2 \\
+Split the weights unevenly by hand & which share the shared network acts like it gives & 2 \\
+Exact top-$k$ selection in numpy & whether the theory formula is right & 3 \\
+Same setting at 6k / 12k / 24k steps; own learning curves & whether training longer helps, and why not & 4 \\
+Same teacher at 300 vs 3,000 steps; Switch vs Chase stranger; push vs no push & when size helps, with one knob changed & 5 \\
+Each loss divided by its own size; separate networks set up wrongly & when the fix works & 6 \\
+Decay, bigger batch or weight averaging alone, same steps & which part of training removes the extra harm & 7 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Claim 1: the loss ratio sets the harm}
+\label{sec:ratio}
+
+\para{Why.} The shared network spends its weights where they lower the sum most. How much of the sum each thing makes up is the loss ratio $\Lam$. If one number decides how the weights are shared out, that number should decide the harm.
+
+\para{Test.} In driving we changed the gap by measuring the car in $a\times$ bigger units ($a=0.5$ to 8), at six sizes, in 14 scenarios: two pedestrians, weaving, a faster pedestrian, absolute-error loss, several learning rates and batch sizes, fewer clips and longer training. We fitted one line to $P-1$ against $\Lam$. Then we scored that line with no refit on the arm, the dot world and the teacher world, where we changed the gap by scaling one target.
+
+\para{Result.} Driving gave $P-1 = 0.149\,\Lam^{0.77}$ over 308 points ($R^2=0.80$). The other worlds fall on the same line (Figure~\ref{fig:law}, Table~\ref{tab:law}).
+
+\begin{table}[h]
+\centering\small
+\caption{The law in each world. Points with $P-1$ above 0.05. Figure~\ref{fig:law} and these counts come from \texttt{charts.py}.}
+\label{tab:law}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+World & Shared networks & Measured $\div$ law (median) & Own fit \\
+\midrule
+Driving: car and pedestrians & 260 & $\times1.00$ & $0.149\,\Lam^{0.77}$ \\
+Robot arm: slow base, fast arm & 48 & $\times1.69$ & -- \\
+Two dots seen in pictures & 33 & $\times0.91$ & $\times0.83$--$0.97$ of driving's law \\
+Teacher networks, no physics & 178 & $\times0.95$ & $0.147\,\Lam^{0.74}$ (95 points) \\
+\midrule
+\textbf{All} & \textbf{519} & \textbf{377 within $\times2.5$} & $\mathbf{P-1\approx 0.15\,\Lam^{0.75}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two examples make the line concrete. $\Lam=10$ gives $P\approx1.84$: the smaller-loss thing has 84\% more error than in its own network. $\Lam=100$ gives $P\approx5.7$.
+
+The gap alone does not collapse the worlds. At a fixed size $P-1$ grows like $r^{0.9}$ to $r^{1.9}$, with a different constant in each world, because a fast thing that is easy to predict makes a small loss. $\Lam$ includes how hard each thing is, so it puts every world on one line.
+
+\begin{takeaway}
+One number, the loss ratio, predicts the harm within $\times2.5$ in 31 of 35 settings across four worlds, including one with no physics.
+\end{takeaway}
+
+\para{Where it is weaker.}
+\begin{itemize}
+\item \textbf{All misses fall below the line.} GRU $\times0.12$; a hard teacher whose own error barely improves $\times0.19$--$0.40$; the teacher at 300 steps $\times0.16$. When the smaller-loss thing is hard to learn at all, there is less to take from it.
+\item \textbf{The constant moves with depth and optimizer.} Depth 3 and 4 raise it (driving $\times1.8$ and $\times2.4$, teacher $\times1.06$ and $\times1.38$). Muon on the hidden matrices raises it ($\times1.69$), although Muon cuts the pedestrian's own error 5 times.
+\item $\Lam$ needs both own networks to be trained. It is a measurement, not something read off the data alone.
+\end{itemize}
+
+\section{Claim 2: the cause is the sum}
+\label{sec:cause}
+
+\para{Why.} Squared error counts errors in absolute size (Figures~\ref{fig:mechanism} and \ref{fig:units}). Multiplying a thing's numbers by $a$ multiplies its squared error by $a^2$. So a change of units should act exactly like a loss weight of $a^2$, and both should act only through the size of that term in the sum.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/units.pdf}
+\caption{Changing units is a loss weight. The same misses, measured in centimetres instead of metres, make the pedestrian's term 10,000 times bigger, and it now takes 99.8\% of the loss.}
+\label{fig:units}
+\end{figure}
+
+\para{Test.} We kept every unit unchanged and multiplied the bigger thing's loss term by $a^2$, then compared with measuring it in $a\times$ bigger units, in driving (size m) and the dot world. Separately, in the dot world, we trained separate networks with uneven sizes (16,000 weights in total) and found which split the shared network matches.
+
+\para{Result.} The two knobs give nearly the same penalty (Figure~\ref{fig:weightunits}, Table~\ref{tab:weightunits}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/weight_units.png}
+\caption{A loss weight of $a^2$ and units $a$ times bigger give nearly the same penalty in both worlds.}
+\label{fig:weightunits}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{Penalty $P$ for a loss weight $a^2$ and for units $a$ times bigger.}
+\label{tab:weightunits}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+$a^2$ & Driving, loss $\times a^2$ & Driving, units $\times a$ & Dots, loss $\times a^2$ & Dots, units $\times a$ \\
+\midrule
+$1/4$ & 1.06 & 1.18 & 1.30 & 1.31 \\
+4 & 2.22 & 1.81 & 2.29 & 2.43 \\
+16 & 4.25 & 3.39 & 3.66 & 3.78 \\
+64 & 7.03 & 6.49 & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hand split shows where the weights go (Figure~\ref{fig:handsplit}, Table~\ref{tab:handsplit}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/hand_split.png}
+\caption{Hand split in the dot world, 16,000 weights in total. Left: the shared network's error on the chasing dot equals that of separate networks that give it about 10\% of the weights. Right: the split with the lowest total loss gives it 20\%.}
+\label{fig:handsplit}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{Hand split in the dot world. The shared network acts like a split that gives the chasing dot 10\% of the weights.}
+\label{tab:handsplit}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Weights given to the chasing dot (the smaller loss) & Robot error & Chasing dot error & Total loss \\
+\midrule
+50\% (even split) & 6.2\% & 10.7\% & 0.0091 \\
+30\% & 4.5\% & 13.2\% & 0.0079 \\
+20\% (lowest total loss) & 3.8\% & 14.5\% & 0.0075 \\
+10\% & 3.5\% & 19.0\% & 0.0083 \\
+\textbf{One shared network} & \textbf{4.9\%} & \textbf{18.3\%} & \textbf{0.0096} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+\item The shared network's error on the chasing dot (18.3\%) matches separate networks that give it only 10\% of the weights.
+\item The split with the lowest total loss gives it 20\%, so the shared network neglects it more than even the best trade would.
+\item Dividing each thing's loss by its own size removes the effect of the gap entirely (claim 6).
+\end{itemize}
+
+It works in both directions and is not about agents. When the robot dot moved slower than the stranger, the robot was predicted worse. When the pedestrian was made faster than the car, the car was predicted worse. In the arm world, the slow base of one robot loses to its own fast arm.
+
+\begin{takeaway}
+The harm comes from the size of each term in the sum; a loss weight and a change of units are the same knob.
+\end{takeaway}
+
+\para{Still to test.} Why the shared network gives less than the loss-optimal share. The hand-split test exists only in the dot world.
+
+\section{Claim 3: theory, what holds without training}
+\label{sec:theory}
+
+Claims 1 and 2 come from trained networks. This section shows which parts follow from the loss alone, with no training, and which parts do not.
+
+\subsection{Result 1: a bigger loss can only take from a smaller one (any network)}
+
+\begin{theorem}
+Take any model, any size, any data, and two losses $L_A$ and $L_B$. Let $\theta_w$ be the best weights for $L_A + w\,L_B$. If $w$ goes up from $w_1$ to $w_2$, then $L_B$ at the best weights can only go down and $L_A$ can only go up.
+\end{theorem}
+
+\begin{proof}
+$\theta_1$ is best for weight $w_1$ and $\theta_2$ is best for weight $w_2$, so
+\begin{align*}
+L_A(\theta_1) + w_1 L_B(\theta_1) &\le L_A(\theta_2) + w_1 L_B(\theta_2),\\
+L_A(\theta_2) + w_2 L_B(\theta_2) &\le L_A(\theta_1) + w_2 L_B(\theta_1).
+\end{align*}
+Adding the two lines cancels $L_A$ and leaves $(w_2-w_1)\big(L_B(\theta_2)-L_B(\theta_1)\big)\le 0$, so $L_B(\theta_2)\le L_B(\theta_1)$. Putting this back into the first line gives $L_A(\theta_1)\le L_A(\theta_2)$.
+\end{proof}
+
+\para{Units are a loss weight.} Measure thing $B$ in units $a$ times bigger (centimetres instead of metres, $a=100$). If the network's last layer is linear, scaling that layer's $B$ rows by $a$ turns any old prediction into the new one, so the new loss term is exactly $a^2$ times the old one. Changing units by $a$ is the same as loss weight $a^2$. With Result 1: \emph{whichever thing is measured in bigger numbers can only gain at the other's expense.} Figure~\ref{fig:weightunits} confirms the identity in trained networks.
+
+\para{What it does not say.}
+\begin{itemize}
+\item How much the smaller thing loses. That needs a model of capacity (Result 2).
+\item That the smaller thing is worse than in its own network. If the two things share structure, sharing can help both; our GRU and hard-teacher settings came out below the law.
+\item Anything about training that stops before the best weights. Section~\ref{sec:cause} shows a trained shared network does worse than the best split.
+\end{itemize}
+
+\subsection{Result 2: how much, in a shared network with limited capacity}
+\label{sec:rank}
+
+\para{Model.} A linear network whose middle layer has $k$ units must squeeze both things through $k$ directions. Each thing's target is a sum of directions of falling importance: the $i$-th direction of thing $A$ is worth $c_A\, i^{-\beta}$ of loss, and of thing $B$ $c_B\, i^{-\beta}$. A larger $\beta$ means a few directions explain most of the target. Separate networks get $k/2$ directions each.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/directions.png}
+\caption{Why the smaller loss loses, in a shared linear network. Each target is made of directions of falling importance, and the bigger-loss thing's are 10 times more important. A network that can keep 20 directions keeps the 20 most important overall: 15 for the bigger-loss thing and 5 for the smaller one, instead of 10 each.}
+\label{fig:directions}
+\end{figure}
+
+\para{Derivation.}
+\begin{enumerate}
+\item The best rank-$k$ fit (Figure~\ref{fig:directions}) keeps the $k$ directions worth the most loss \citep{eckart1936approximation}. So the shared network keeps every direction above one threshold $\tau$, from both things together.
+\item Thing $A$ keeps $n_A = (c_A/\tau)^{1/\beta}$ directions and thing $B$ keeps $n_B=(c_B/\tau)^{1/\beta}$, with $n_A+n_B=k$. So $n_B = k/(1+\rho)$, with $\rho=(c_A/c_B)^{1/\beta}$.
+\item The error left after keeping $n$ directions is the sum of the rest, about $c\, n^{1-\beta}/(\beta-1)$.
+\item Both own networks keep $k/2$ directions, so their losses differ only by $c$: $\Lam = c_A/c_B$ and $\rho=\Lam^{1/\beta}$.
+\item Dividing $B$'s error with $n_B$ directions by its error with $k/2$:
+\end{enumerate}
+\begin{equation}
+\boxed{\;P = \left(\frac{1+\Lam^{1/\beta}}{2}\right)^{\beta-1}\;}
+\label{eq:rank}
+\end{equation}
+
+\para{What follows from it.}
+\begin{itemize}
+\item \textbf{The smaller loss always loses here:} $\Lam>1$ gives $P>1$, and $P$ grows with $\Lam$.
+\item \textbf{The growth is slower than $\Lam$:} for large $\Lam$, $P\propto\Lam^{(\beta-1)/\beta}$, an exponent below 1, because the directions the bigger thing takes next are worth less and less. The measured exponent 0.75 is in this range.
+\item \textbf{Size does not fix it:} $k$ cancels. Doubling the network doubles both shares and leaves $P$ unchanged, as long as both things still have useful directions left. When thing $B$ runs out of useful directions, extra width goes to $B$ and $P$ falls toward 1. This is claim 5.
+\item \textbf{Normalizing fixes it:} dividing each loss by its own size sets $\Lam=1$ and $P=1$. This is claim 6.
+\end{itemize}
+
+\para{Check.} We checked the formula by keeping the top $k$ of two explicit lists of 200,000 directions each (numpy, under one second, no training; \texttt{experiments/rankcheck.py}).
+
+\begin{table}[h]
+\centering\small
+\caption{Exact top-$k$ selection against Equation~\eqref{eq:rank}. The formula matches it within 2\% at $k=400$; at $k=40$ the steps are coarse. The $k=40$ and $k=400$ columns agree, so size does not change $P$.}
+\label{tab:rank}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrcr@{}}
+\toprule
+$\Lam$ & $\beta=2$, $k=40$ & $\beta=2$, $k=400$ & $\beta=3$, $k=400$ & $\beta=4$, $k=400$ & Formula, $\beta=2/3/4$ & Measured law \\
+\midrule
+10 & 2.16 & 2.08 & 2.47 & 2.67 & 2.08 / 2.49 / 2.68 & 1.84 \\
+100 & 5.82 & 5.50 & 7.86 & 8.97 & 5.50 / 7.96 / 9.01 & 5.7 \\
+1000 & 13.2 & 16.1 & 30.2 & 36.4 & 16.3 / 30.3 / 36.3 & 27.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/theory.png}
+\caption{The penalty from theory (solid, three values of $\beta$) and the law measured in trained networks (dashed). Above $\Lam\approx3$ the measured law lies between $\beta=2$ and $\beta=3$.}
+\label{fig:theory}
+\end{figure}
+
+\begin{takeaway}
+That a bigger loss takes from a smaller one is a theorem for any network at its best weights; that the harm grows slower than the loss ratio and does not shrink with size is a theorem for a shared linear network with limited capacity; the constants 0.15 and 0.75 are measured, not derived.
+\end{takeaway}
+
+\para{Still to test.}
+\begin{itemize}
+\item Measure $\beta$ in each world (how fast each thing's own error falls as directions are added) and predict the constant in advance instead of fitting it.
+\item Training speed: in deep linear networks, gradient descent learns big directions before small ones \citep{saxe2014exact}. This matches claim 4, but the slowdown factor is not derived here.
+\end{itemize}
+
+\section{Claim 4: training longer does not fix it}
+\label{sec:steps}
+
+\para{Why.} If more steps gave the shared network time to finish the bigger thing and then turn to the smaller one, the harm would shrink with training. If instead the sum slows the smaller thing by a fixed factor at every step, both networks keep improving and their ratio stays the same.
+
+\para{Test.} We trained the same settings for 6,000, 12,000 and 24,000 steps, each with the learning rate decayed to zero at the end. We also recorded each own network's learning curve and asked: after $S$ steps, the shared network's error on the smaller thing equals the own network's error after how many steps?
+
+\para{Result.} Four times more training leaves $P$ unchanged in driving and the dot world (Figure~\ref{fig:steps}, Table~\ref{tab:steps}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/steps.png}
+\caption{Four times more training leaves $P$ unchanged in driving and the dot world. The robot arm falls because its base has reached its error floor.}
+\label{fig:steps}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{Penalty $P$ after 6,000, 12,000 and 24,000 steps, each with the learning rate decayed to zero.}
+\label{tab:steps}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Setting & 6,000 steps & 12,000 & 24,000 \\
+\midrule
+Driving, gap 5.3, size m & 1.30 & 1.33 & 1.41 \\
+Driving, gap 10.5, size m & 1.81 & 1.81 & 1.72 \\
+Driving, gap 21, size m & 3.39 & 3.04 & 3.08 \\
+Driving, gap 21, size ml & 1.83 & 2.02 & 2.03 \\
+Two dots, robot target $\times4$ & 3.78 & 3.82 & 3.70 \\
+Robot arm, gap $\times4$ (base at its floor) & 2.75 & 2.20 & 1.67 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In driving both errors fall about 6 times over that range, but their ratio does not move. The learning curves explain it. The shared network learns the smaller thing $F$ times slower: its error after $S$ steps equals the own network's error after $S/F$ steps, with $F$ constant over training. $F$ measured at 6,000 steps predicts the shared error at 12,000 and 24,000 steps within $\times0.80$--$1.40$ in driving and the arm. If the own error falls like $S^{-\alpha}$, then $P=F^{\alpha}$, which stays constant. Figure~\ref{fig:curves} shows the stretched curves.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/curves.png}
+\caption{Training longer does not close the gap. Each point is a full driving run of that length. The shared network's pedestrian error follows the pedestrian's own learning curve stretched by a fixed factor $F$ along the step axis ($F=1.2$ when the car moves $5.2\times$ farther, 2.3 when it moves $21\times$ farther), so the ratio of the two errors stays the same.}
+\label{fig:curves}
+\end{figure}
+
+\begin{takeaway}
+The sum slows the smaller-loss thing by a fixed factor at every step, so training longer keeps the same penalty while that thing is still learning.
+\end{takeaway}
+
+\para{Where it is weaker.}
+\begin{itemize}
+\item Once the smaller thing's own error reaches a floor that more steps cannot remove, the shared network catches up and $P$ falls toward 1 (the arm above; driving size s at gap $\times4$ also falls at 24,000 steps).
+\item $F$ itself does not follow one law across worlds (in the teacher world $F$ against $\Lam$ has $R^2=0.05$). $P$ is the number that follows the law.
+\end{itemize}
+
+\section{Claim 5: a bigger network helps only when the separate networks stop gaining from size}
+\label{sec:size}
+
+\para{Why.} Result 2 says size alone cannot fix the harm while both things still have useful directions to learn: a bigger network gives the bigger loss more as well. Only when the separate networks no longer improve with more weights are there spare weights that the smaller thing can receive.
+
+\para{Test.} We fitted $\log(P-1) = a + b\log\Lam + c\log N$ in every setting, so $c$ is the effect of size at a fixed loss ratio. Then we ran three direct switches, each changing one knob that decides whether the own networks still gain from size:
+\begin{itemize}
+\item the same teacher trained for 300 steps (own error limited by steps) and 3,000 steps (own error limited by size);
+\item in the dot world, a Switch stranger whose own error is flat with size against a Chase stranger whose own error keeps falling;
+\item in the dot world, a Chase stranger with and without a random push that sets an error floor.
+\end{itemize}
+
+\para{Result.} Changing only the training length flips the sign of the size effect in the teacher world (Figure~\ref{fig:size}, Table~\ref{tab:size}). All three switches point the same way (Table~\ref{tab:sizeall}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/size.png}
+\caption{The same teacher, gap $\times8$. At 300 steps more weights barely help the own network, and $P$ falls with size. At 3,000 steps the own network keeps gaining, and $P$ rises with size.}
+\label{fig:size}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{Same teacher, gap $\times8$, at two training lengths.}
+\label{tab:size}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Total weights & 1,224 & 3,464 & 11,016 & 38,408 & 142,344 \\
+\midrule
+Own error, 300 steps & 0.398 & 0.295 & 0.276 & 0.258 & 0.230 \\
+$P$, 300 steps & 1.94 & 2.40 & 1.49 & 1.18 & 1.21 \\
+Own error, 3,000 steps & 0.243 & 0.185 & 0.127 & 0.084 & 0.059 \\
+$P$, 3,000 steps & 1.78 & 1.79 & 2.49 & 3.32 & 4.10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Size effect at a fixed loss ratio, by whether the own networks still gain from size.}
+\label{tab:sizeall}
+\begin{tabularx}{\linewidth}{@{}YYr@{}}
+\toprule
+Setting & Do the own networks still gain from size? & Size effect at fixed $\Lam$ \\
+\midrule
+Driving and arm, 16 MLP settings & little (both own errors near their size floor) & $N^{-0.22}$ to $N^{-0.73}$ \\
+Teacher, 300 steps & little & $N^{-0.45}$ \\
+Teacher, 3,000 steps & yes & $N^{+0.30}$ \\
+Dots, Switch stranger & little & $N^{-0.46}$ to $N^{-0.62}$ \\
+Dots, Chase stranger & yes & $N^{+0.07}$ \\
+Dots, Chase with a random push & little (push sets a floor) & $N^{-0.29}$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{takeaway}
+A bigger network does not fix the harm while the separate networks still gain from more weights; it helps only once they stop.
+\end{takeaway}
+
+\para{Where it is weaker.}
+\begin{itemize}
+\item There is no single threshold across worlds. How fast the own error falls with size correlates with the size effect at only 0.36 over 25 settings.
+\item We ruled out five other explanations for driving's size effect: separate inputs for each thing, finite data, scaling of the inputs, the slope of the learning curve, and a law in the slowdown factor $F$.
+\end{itemize}
+
+\section{Claim 6: the fix}
+\label{sec:fix}
+
+\para{Why.} If the harm comes from the size of each term, dividing each thing's loss by its own typical size sets $\Lam$ near 1 (Result 2 gives $P=1$). One network per thing removes the sum altogether: each network is changed only by its own loss (Figure~\ref{fig:mechanism}b). Figure~\ref{fig:fix} shows the first fix across every gap and size.
+
+\para{Test.} In driving we divided each thing's loss by its own typical size and ran the full gap grid at every size. Every comparison in this paper is also the second fix at equal weights. We tried separate networks set up wrongly as well.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/fix.png}
+\caption{The fix, in driving. With the plain sum (left) the pedestrian's penalty grows with the gap at every network size. With each thing's loss divided by its own typical size (right) $P$ stays near 1 at every gap and size; below 1, sharing even helps.}
+\label{fig:fix}
+\end{figure}
+
+\para{Result.}
+\begin{itemize}
+\item \textbf{Dividing each thing's loss by its own size} removed the effect of the gap: $P$ was flat across gaps from 2.6 to 42, and $P-1$ exceeded 0.1 in only 1 of 25 runs. Dividing per number instead of per thing breaks training: numbers that almost never change get a huge weight.
+\item \textbf{One network per thing} removes the harm when each network is big enough to learn its thing and sees everything its thing reacts to. Separate networks lost in three cases: one part got too few weights in a tiny network; half the weights went to a thing that never moves; a chasing dot's network was not shown the robot's moves, so it could not predict the chase.
+\end{itemize}
+
+\begin{takeaway}
+Divide each loss by its own size, or give each thing its own network; both remove the harm.
+\end{takeaway}
+
+\para{Still to test.} Per-thing scaling at the largest sizes in the dot and teacher worlds, and whether the better prediction leads to better decisions, such as fewer near-misses in a planner.
+
+\section{Claim 7: a constant learning rate exaggerates the harm}
+\label{sec:lr}
+
+\para{Why.} At a constant learning rate the weights never settle; they keep jumping around the best point. The bigger loss has big, noisy gradients, and in a shared network they shake features that the smaller thing also uses. A shake that is small for the big prediction is large for the small one.
+
+\para{Test.} In driving, at the same 6,000 steps, we switched on each part of careful training alone.
+
+\para{Result.} See Tables~\ref{tab:lr1} and \ref{tab:lr2} and Figure~\ref{fig:constlr}.
+
+\begin{table}[h]
+\centering\small
+\caption{Driving, same 6,000 steps, one change at a time.}
+\label{tab:lr1}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Same 6,000 steps, but\ldots & Pedestrian $P$ & Car $P$ \\
+\midrule
+constant learning rate & 1.81 & 0.80 \\
+learning rate decays to zero & 1.30 & 0.95 \\
+$4\times$ bigger batch & 1.19 & 1.08 \\
+evaluate the average of the last quarter of weights & 1.23 & 1.03 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Constant against decayed learning rate in four settings.}
+\label{tab:lr2}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+World & $r$ & Smaller-loss thing, constant rate & Smaller-loss thing, decayed \\
+\midrule
+Dot world, chasing dot & 2.05 & 1.9 & 2.0 \\
+Arm, medium speed & 3.0 & 2.4 & 1.06 \\
+Arm, fast & 7.4 & 4.1 & 1.34 \\
+Driving, default pedestrian, 8k weights & 5.2 & 1.8 & 1.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/const_lr.png}
+\caption{A constant learning rate exaggerates the harm. Left: in driving, decaying the rate, a $4\times$ bigger batch or averaging the last weights each lower $P$ at the same 6,000 steps. Right: decaying the rate cuts $P$ up to 3 times in the arm; the dot world does not change.}
+\label{fig:constlr}
+\end{figure}
+
+All three tricks remove the jitter a constant learning rate leaves in the weights, and all three remove most of the extra harm without more steps. In the law fit, the constant learning rate sits $\times1.42$ above the line. The dot world did not change: its harm is the loss ratio, not jitter.
+
+\begin{takeaway}
+Constant-rate training inflated the harm up to 3 times in the arm and driving worlds; compare designs after the learning rate has decayed.
+\end{takeaway}
+
+\para{Still to test.} The shaking picture fits the results but is not measured directly, for example by tracking how much the bigger loss's updates move the smaller thing's output.
+
+\section{Details that are not claims}
+\label{sec:details}
+
+\begin{itemize}
+\item \textbf{More things, the smallest loses most.} With a car and 3 pedestrians, the slowest pedestrian's $P$ was 1.87 and the others' 1.21--1.27. With two pedestrians, each follows the law (offsets $\times1.07$ and $\times0.67$).
+\item \textbf{Network type.} MLPs at depth 1--4, GRUs and transformers all show the harm once their own networks can learn. One token per thing in a transformer does not protect the smaller thing: the tokens still share weights and one loss. The GRU sits far below the line ($\times0.12$).
+\item \textbf{Depth raises the constant} (driving $\times0.95$ / 1.8 / 2.4 at depth 2 / 3 / 4; teacher $\times0.92$ / 1.06 / 1.38).
+\item \textbf{Muon raises it} ($\times1.69$ in driving) while cutting the pedestrian's own error 5 times.
+\item \textbf{Absolute error instead of squared error} lowers the harm only a little at the same gap; the law still holds with $\Lam$ measured in that loss ($\times0.93$).
+\item \textbf{Random targets cost nothing.} A pedestrian moved mostly by random pushes had no penalty at any size ($P$ 1.0--1.07): there is nothing learnable to take away.
+\item \textbf{Direction checks over every grid.} $P$ rises with the gap in 1,057 of 1,066 neighbouring pairs, and falls with size in 520 of 558; most breaks are at the smallest gap, where $P\approx1$.
+\end{itemize}
+
+\section{What to do, and where it applies}
+\label{sec:apply}
+
+\begin{table}[h]
+\centering\small
+\caption{Recommendations.}
+\label{tab:recs}
+\begin{tabularx}{\linewidth}{@{}YYl@{}}
+\toprule
+Case & Recommendation & Claim \\
+\midrule
+Any network trained on a sum of losses & Measure each term's loss with its own network; $P\approx 1+0.15\,\Lam^{0.75}$ estimates the harm to the smaller one & 1 \\
+Terms in different units, or with different typical sizes & Divide each loss by its own typical size, or train one network per term & 2, 6 \\
+Hoping a longer run fixes it & It will not while the smaller thing is still learning & 4 \\
+Hoping a bigger model fixes it & Only if the separate networks have stopped gaining from size, which is rare for large models still improving with scale & 5 \\
+Comparing a shared design with a split one & Decay the learning rate first; a constant rate exaggerates the gap & 7 \\
+Reporting results & Report each term's error separately; the total hides the smaller one & 2 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\para{Where the same sum appears.} We did not test any of these systems. Each line of Table~\ref{tab:systems} is what the rule predicts (Figure~\ref{fig:applications}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/applications.pdf}
+\caption{Systems that train one network on a sum of losses of different sizes. We did not test them; each card states what the rule predicts.}
+\label{fig:applications}
+\end{figure}
+
+\begin{table}[h]
+\centering\small
+\caption{Untested predictions for systems that use the same sum.}
+\label{tab:systems}
+\begin{tabularx}{\linewidth}{@{}YYYY@{}}
+\toprule
+System & Bigger term & Smaller term & Prediction \\
+\midrule
+Self-driving world model & cars and fast traffic & pedestrians, cyclists & pedestrians learned worse than by a per-type predictor of equal size, unless each type's loss is normalized \\
+Robot policy or world model & large joints, base & gripper, fingers, small joints & small-range outputs learned worse; per-dimension action scaling (already common) should remove it \\
+Mixture-of-experts language model & next-token loss & router balancing loss times a small weight & balance is learned worse than the weight alone suggests; the harm is set by the ratio of the two terms \\
+Language model with multi-token prediction or other auxiliary losses & main loss & auxiliary loss times 0.1--0.3 & the auxiliary target is learned worse than by its own head of equal size \\
+Multi-task model (depth + segmentation, several regressions) & task with the larger loss & task with the smaller loss & the smaller task's harm follows the loss ratio; normalization methods should remove most of it \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Limits and next steps}
+\label{sec:limits}
+
+\para{Limits.}
+\begin{itemize}
+\item Small worlds only: networks up to 142,000 weights and no real data.
+\item One run per point. Runs are deterministic; neighbouring settings differ by about $\pm0.15$ in $P$.
+\item The constants 0.15 and 0.75 are fitted. Depth, optimizer and network type move the constant.
+\item The size rule has three direct switches but no threshold that holds across worlds.
+\item We have not shown that the worse prediction leads to worse decisions.
+\end{itemize}
+
+\para{Next steps, in order.}
+\begin{enumerate}
+\item \textbf{Predict before measuring:} estimate $\beta$ from each world's own learning curve and predict the constant in advance.
+\item \textbf{Real data:} a public trajectory dataset with cars and pedestrians, shared vs per-type predictors at equal size, each type's error reported.
+\item \textbf{Language models:} a small mixture-of-experts model with the balancing weight swept, and a multi-token prediction head against its own network.
+\item \textbf{Decisions:} put both predictors into a planner and count near-misses with the pedestrian.
+\item \textbf{Training speed:} derive the slowdown factor $F$ from deep linear network dynamics.
+\end{enumerate}
+
+\para{Code and data.} Everything is at \url{https://github.com/vukrosic/two-losses-one-network}.
+\begin{itemize}
+\item Driving and arm worlds: \texttt{experiments/drive.py}.
+\item Dot world: \texttt{experiments/two\_vs\_one.py} with \texttt{experiments/dots/}.
+\item Teacher world: \texttt{experiments/teacher.py}.
+\item Hand split: \texttt{experiments/capsplit.py}.
+\item Law fits: \texttt{experiments/allfit.py}, \texttt{lawfit.py}, \texttt{teachfit.py}, \texttt{dotgrid.py}.
+\item Size rule: \texttt{experiments/regime.py}. Slowdown: \texttt{experiments/slowdown.py}, \texttt{fslow.py}.
+\item Theory check: \texttt{experiments/rankcheck.py}.
+\item Every run: \texttt{experiments/*.jsonl}. Figures: \texttt{charts.py}.
+\item Lab notes with predictions written before each run: \texttt{LAB-NOTES.md}.
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+
+\section{Every setting against the law}
+\label{app:settings}
+
+Driving and arm grids, 6,000 decayed steps unless noted. Gap exponent: $P-1\propto r^x$ at fixed size. Size exponent: $P-1\propto N^y$ at fixed gap. Own-error slope: how fast the smaller-loss thing's own error falls with size. Law offset: measured $\div\, 0.149\,\Lam^{0.77}$, median over the setting.
+
+\begin{table}[h]
+\centering\small
+\caption{Every setting against the law.}
+\label{tab:appA}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Setting & Gap exponent & Size exponent & Own-error slope & Law offset \\
+\midrule
+Driving MLP, Adam & 1.45 & $-0.52$ & 0.21 & $\times0.95$ \\
+Driving, fine gap grid & 1.18 & $-0.82$ & $-0.03$ & $\times0.55$ \\
+Driving, 18k steps & 1.57 & $-1.07$ & 0.22 & $\times1.23$ \\
+Driving, constant learning rate & 1.06 & $-0.40$ & 0.00 & $\times1.42$ \\
+Driving, learning rate 0.003 & 1.58 & $-0.80$ & 0.04 & $\times0.88$ \\
+Driving, learning rate 0.0003 & 1.10 & $-0.48$ & 0.26 & $\times0.76$ \\
+Driving, batch 64 & 1.53 & $-0.50$ & 0.25 & $\times0.82$ \\
+Driving, 250 clips & 1.36 & $-0.61$ & 0.08 & $\times1.18$ \\
+Driving, faster pedestrian & 1.31 & $-0.62$ & 0.12 & $\times1.82$ \\
+Driving, weaving pedestrian & 1.60 & $-0.55$ & 0.17 & $\times1.65$ \\
+Two pedestrians (first / second) & 1.37 / 1.21 & $-0.53$ / $-0.58$ & 0.16 / 0.15 & $\times1.07$ / $\times0.67$ \\
+Driving, car is the smaller-loss thing & 1.18 & $-0.64$ & 0.36 & $\times0.35$ \\
+Arm / faster arm & 1.38 / 1.24 & $-1.50$ / $-1.48$ & $-0.02$ / $-0.03$ & $\times1.34$ / $\times1.57$ \\
+Driving, absolute-error loss & 1.35 & $-0.50$ & 0.39 & $\times0.93$ \\
+Driving, Muon & 1.20 & $-0.54$ & 0.47 & $\times1.69$ \\
+MLP depth 3 / depth 4 & 1.76 / 1.40 & $-0.31$ / $-0.27$ & 0.41 / 0.42 & $\times1.82$ / $\times2.44$ \\
+GRU & 0.94 & $-0.39$ & 0.29 & $\times0.12$ \\
+Per-thing loss scaling & flat & -- & 0.21 & -- \\
+Dot world, Chase & 0.96 & $+0.07$ & 0.36 & $\times0.83$ \\
+Dot world, Chase, 250 clips & 0.96 & $-0.04$ & 0.29 & $\times0.85$ \\
+Dot world, Switch & 1.22 & $-0.46$ & 0.05 & $\times0.91$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Teacher world, 3,000 steps: pooled $0.147\,\Lam^{0.74}$ over 95 points (fresh data and separate inputs); depth grid $0.117\,\Lam^{0.82}$ over 46 points; hard teacher with fresh data $\times0.30$, with fixed data $\times0.19$; teacher at 300 steps $\times0.16$.
+
+\section{The first long-training sweep}
+\label{app:first}
+
+Our first experiments sorted settings by the speed gap $r$ and asked a yes/no question: is the slower thing's $P$ at least 1.1 and larger than every faster thing's $P$ (\checkmark)? 24,000 decayed steps (transformer and most dot-world runs 12,000). The loss ratio later replaced this yes/no rule with one number.
+
+\begin{table}[h]
+\centering\small
+\caption{The first long-training sweep, sorted by setting.}
+\label{tab:appB}
+\begin{tabular}{@{}rlrrll@{}}
+\toprule
+\# & Setting & $r$ & Slower $P$ & Faster $P$ & \checkmark? \\
+\midrule
+1 & Driving MLP 1.1k & 5.2 & 1.42 & 1.18 & \checkmark \\
+2 & Driving MLP 8k & 5.2 & 1.41 & 1.39 & $\times$ (tie) \\
+3 & Driving MLP 90k & 5.2 & 1.03 & 1.52 & $\times$ \\
+4 & Slow pedestrian, MLP 8k & 10.4 & 1.89 & 1.48 & \checkmark \\
+5 & Weaving 0.5 & 4.9 & 1.19 & 1.15 & \checkmark\ (barely) \\
+6 & Weaving 1 & 4.3 & 1.08 & 1.16 & $\times$ \\
+7 & Weaving 2 & 3.0 & 1.02 & 1.55 & $\times$ \\
+8 & Car + 2 pedestrians & 8.2 & 1.39 & car 1.36, ped 1.14 & \checkmark\ (barely) \\
+9 & Car + 3 pedestrians & 7.6 & 1.87 & 1.21--1.27 & \checkmark \\
+10 & Random push & 5.2 & 1.04 & 1.49 & $\times$ \\
+11 & Absolute-error loss, 1.1k & 5.2 & 1.66 & 2.11 & $\times$ \\
+12 & Absolute-error loss, 8k & 5.2 & 1.21 & 1.54 & $\times$ \\
+13 & GRU 0.9k & 5.2 & 1.80 & 0.88 & \checkmark \\
+14 & GRU 5k & 5.2 & 1.70 & 1.13 & \checkmark \\
+15 & GRU 48k & 5.2 & 1.22 & 1.02 & \checkmark \\
+16 & Transformer 6k & 5.2 & 1.05 & 1.31 & $\times$ \\
+17 & Transformer 27k & 5.2 & 3.20 & 1.90 & \checkmark \\
+18 & Arm, slow & 1.4 & 1.06 & 1.01 & $\times$ \\
+19 & Arm, medium & 3.0 & 1.06 & 0.85 & $\times$ \\
+20 & Arm, fast & 7.4 & 1.34 & 0.74 & \checkmark \\
+21 & Dot, chaser & 2.05 & 2.0 & 0.75 & \checkmark \\
+22 & Dot, flee & 2.85 & 3.07 & 0.77 & \checkmark \\
+23 & Dot, orbit & 2.12 & 1.47 & 0.82 & \checkmark \\
+24 & Dot, switch & 1.60 & 1.18 & 1.02 & \checkmark \\
+25 & Dot, patrol & 1.81 & over 10 & 0.68 & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The speed gap alone could not say which settings fail (11 of 20 between gaps 1.5 and 7 held). The loss ratio explains the failures: weaving, random pushes and a fast-learning big network make the two loss terms closer than the speed gap suggests.
+
+\end{document}

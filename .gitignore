@@ -2,3 +2,13 @@ __pycache__/
 *.pt
 r.jsonl
 .DS_Store
+
+# LaTeX build files
+paper/latex/*.aux
+paper/latex/*.log
+paper/latex/*.bbl
+paper/latex/*.blg
+paper/latex/*.out
+paper/latex/*.fls
+paper/latex/*.fdb_latexmk
+paper/latex/paper.pdf

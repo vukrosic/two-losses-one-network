@@ -36,7 +36,7 @@
 </head>
 <body>
 <main>
-<div class="draft">Draft, 12 November 2026</div>
+<div class="draft">Draft, 13 November 2026</div>
 <h1>Training One Network on Two Losses Added Together Hurts the Thing With the Smaller Loss, and the Harm Grows With the Ratio of the Two Losses</h1>
 <p class="sub">One number, the ratio of the two losses, predicts how much worse; normalizing the losses removes it</p>
 <p class="meta">Vuk Rosić</p>
@@ -60,7 +60,7 @@
 
 <div class="toc">
 <b>Contents</b><br>
-<a href="#s1">1. What the problem is</a> · <a href="#s2">2. Who adds losses together today</a> · <a href="#s3">3. The claims</a> · <a href="#s4">4. Setup</a> · <a href="#s5">5. Claim 1: the loss ratio sets the harm</a> · <a href="#s6">6. Claim 2: the cause is the sum</a> · <a href="#s7">7. Claim 3: theory</a> · <a href="#s8">8. Claim 4: training longer</a> · <a href="#s9">9. Claim 5: network size</a> · <a href="#s10">10. Claim 6: the fix</a> · <a href="#s11">11. Claim 7: constant learning rate</a> · <a href="#s12">12. Details that are not claims</a> · <a href="#s13">13. What to do, and where it applies</a> · <a href="#s14">14. Limits and next steps</a> · <a href="#appA">Appendix A</a> · <a href="#appB">Appendix B</a>
+<a href="#s1">1. What the problem is</a> · <a href="#s2">2. Who adds losses together today, and prior work</a> · <a href="#s3">3. The claims</a> · <a href="#s4">4. Setup</a> · <a href="#s5">5. Claim 1: the loss ratio sets the harm</a> · <a href="#s6">6. Claim 2: the cause is the sum</a> · <a href="#s7">7. Claim 3: theory</a> · <a href="#s8">8. Claim 4: training longer</a> · <a href="#s9">9. Claim 5: network size</a> · <a href="#s10">10. Claim 6: the fix</a> · <a href="#s11">11. Claim 7: constant learning rate</a> · <a href="#s12">12. Details that are not claims</a> · <a href="#s13">13. What to do, and where it applies</a> · <a href="#s14">14. Limits and next steps</a> · <a href="#appA">Appendix A</a> · <a href="#appB">Appendix B</a>
 </div>
 
 <h2 id="s1">1. What the problem is</h2>
@@ -79,7 +79,7 @@
 <li><b>r, the gap:</b> how many times bigger the bigger thing's numbers are (for moving things, how many times farther it moves per step). With squared error, Λ grows roughly like r² times how much harder the bigger thing is to predict.</li>
 </ul>
 
-<h2 id="s2">2. Who adds losses together today</h2>
+<h2 id="s2">2. Who adds losses together today, and prior work</h2>
 <div class="tbl"><table>
 <tr><th>Work</th><th>What is added together</th><th>How the sizes are handled</th><th>Smaller term compared with its own network?</th></tr>
 <tr><td>Scene Transformer, Wayformer, MotionLM, UniAD (2022–2023)</td><td>errors of every car, cyclist and pedestrian in a driving scene</td><td>one loss over all agents</td><td>no</td></tr>
@@ -91,7 +91,12 @@
 <tr><td>PopArt (van Hasselt et al., 2016)</td><td>value targets of several games</td><td>targets normalized as training runs</td><td>shown to help; no law</td></tr>
 </table></div>
 <p>The field knows that a bigger loss can crowd out a smaller one. Kendall et al. note that the best weighting depends on the units, and many systems rescale their targets for this reason.</p>
-<p><b>The gap.</b> We found no work that measures how much the smaller loss loses against its own network at equal size, and nothing that predicts that amount from one measurable number.</p>
+<h3>2.1 Closest prior work</h3>
+<p><b>The effect itself is known.</b> Khakhar and Buckman (2022) show that with squared error, a regression target at a bigger scale swamps a smaller one: scaling a target by z scales its gradient by z², and a network of limited size then predicts the small-scale target poorly. They fix it with a histogram loss. They do not compare against a network per target of the same size, and they give no law for how much the small target loses.</p>
+<p><b>The fix is known.</b> PopArt (van Hasselt et al., 2016) normalizes value targets as training runs, and Hessel et al. (2019) use it to stop games with large rewards from dominating one shared agent. This is the same idea as dividing each loss by its own size (claim 6). DB-MTL (Lin et al., 2023) balances task losses on a log scale for the same reason.</p>
+<p><b>Shared models acting like smaller ones.</b> Fernandes et al. (2023) find that in multilingual translation, a model trained on two languages acts like a single-language model with a fraction of the weights, and that fraction is set by each language's share of the training data and does not depend on model size. Our hand split (section 6) measures the same kind of fraction, set by the loss ratio instead of the data share. Shaham et al. (2023) find that interference between languages is strongest when the model is small relative to the data, and Aghajanyan et al. (2023) add a competition term to scaling laws for mixed-modality training.</p>
+<p><b>Why big parts are learned first.</b> Gradient descent learns large directions of a target before small ones in deep linear networks (Saxe et al., 2014; Lampinen and Ganguli, 2019), which underlies claim 4. Michaud et al. (2023) model scaling as a limited network learning the most valuable pieces first, the same picture as our rank-k result (section 7.2), which rests on the Eckart–Young theorem.</p>
+<p><b>What is new here.</b> (1) The harm predicted from one measurable number, the loss ratio Λ, with one law, P − 1 ≈ 0.15 Λ<sup>0.75</sup>, across four worlds and several network types. (2) A same-size comparison of one shared network against one network per term. (3) A closed form for a rank-k linear network, P = ((1 + Λ<sup>1/β</sup>)/2)<sup>β−1</sup>. (4) The finding that the shared network follows each term's own learning curve slowed by a fixed factor, so training longer does not help. (5) The condition under which size helps: only once the separate networks stop gaining from size. Fernandes et al. find the fraction independent of size in a data-weight setting; we find both regimes and switch between them with one knob. (6) A constant learning rate inflating the measured harm up to 3 times.</p>
 
 <h2 id="s3">3. The claims</h2>
 <div class="tbl"><table>
@@ -461,19 +466,27 @@ L<sub>A</sub>(θ<sub>2</sub>) + w<sub>2</sub> L<sub>B</sub>(θ<sub>2</sub>) ≤ 
 
 <h3>References</h3>
 <ul class="cap" style="font-size:14px">
+<li>Aghajanyan, A. et al. Scaling laws for generative mixed-modal language models. ICML 2023. arXiv 2301.03728.</li>
 <li>Chen, Z. et al. GradNorm: gradient normalization for adaptive loss balancing in deep multitask networks. ICML 2018. arXiv 1711.02257.</li>
 <li>Chi, C. et al. Diffusion Policy: visuomotor policy learning via action diffusion. RSS 2023. arXiv 2303.04137.</li>
 <li>DeepSeek-AI. DeepSeek-V3 technical report. 2024. arXiv 2412.19437.</li>
 <li>Eckart, C., Young, G. The approximation of one matrix by another of lower rank. Psychometrika 1936.</li>
 <li>Fedus, W., Zoph, B., Shazeer, N. Switch Transformers: scaling to trillion parameter models with simple and efficient sparsity. JMLR 2022. arXiv 2101.03961.</li>
+<li>Fernandes, P. et al. Scaling laws for multilingual neural machine translation. ICML 2023. arXiv 2302.09650.</li>
 <li>Hafner, D. et al. Mastering diverse domains through world models (DreamerV3). 2023. arXiv 2301.04104.</li>
+<li>Hessel, M. et al. Multi-task deep reinforcement learning with PopArt. AAAI 2019. arXiv 1809.04474.</li>
 <li>Hu, A. et al. GAIA-1: a generative world model for autonomous driving. 2023. arXiv 2309.17080.</li>
 <li>Hu, Y. et al. Planning-oriented autonomous driving (UniAD). CVPR 2023. arXiv 2212.10156.</li>
 <li>Kendall, A., Gal, Y., Cipolla, R. Multi-task learning using uncertainty to weigh losses. CVPR 2018. arXiv 1705.07115.</li>
+<li>Khakhar, A., Buckman, J. Neural regression for scale-varying targets. 2022. arXiv 2211.07447.</li>
+<li>Lampinen, A., Ganguli, S. An analytic theory of generalization dynamics and transfer learning in deep linear networks. ICLR 2019. arXiv 1809.10374.</li>
+<li>Lin, B. et al. Dual-balancing for multi-task learning (DB-MTL). 2023. arXiv 2308.12029.</li>
+<li>Michaud, E. et al. The quantization model of neural scaling. NeurIPS 2023. arXiv 2303.13506.</li>
 <li>Nayakanti, N. et al. Wayformer: motion forecasting via simple and efficient attention networks. 2022. arXiv 2207.05844.</li>
 <li>Ngiam, J. et al. Scene Transformer: a unified architecture for predicting multiple agent trajectories. ICLR 2022. arXiv 2106.08417.</li>
 <li>Saxe, A., McClelland, J., Ganguli, S. Exact solutions to the nonlinear dynamics of learning in deep linear neural networks. ICLR 2014. arXiv 1312.6120.</li>
 <li>Seff, A. et al. MotionLM: multi-agent motion forecasting as language modeling. ICCV 2023. arXiv 2309.16534.</li>
+<li>Shaham, U. et al. Causes and cures for interference in multilingual translation. ACL 2023. arXiv 2212.07530.</li>
 <li>van Hasselt, H. et al. Learning values across many orders of magnitude (PopArt). NeurIPS 2016. arXiv 1602.07714.</li>
 <li>Yu, T. et al. Gradient surgery for multi-task learning (PCGrad). NeurIPS 2020. arXiv 2001.06782.</li>
 </ul>

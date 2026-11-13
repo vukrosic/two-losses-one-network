@@ -1,6 +1,6 @@
 # Training one network on two losses added together hurts the thing with the smaller loss
 
-We are using this work to write a conference paper. Code, data and text are free to use under the MIT licence.
+**Paper: [paper/paper.pdf](paper/paper.pdf)** (23 pages, with proofs and related work). Code, data and text are free to use under the MIT licence.
 
 ## Abstract
 
@@ -130,7 +130,8 @@ Run `bash experiments/mtp_runs.sh 0` to time two runs, then stages 1–4, then `
 
 Four small worlds, MLPs (depth 1–4), GRUs and a few transformers from 360 to 142,000 weights, Adam with the learning rate decayed to zero, 3,000–24,000 steps. Every shared network is compared with one network per thing at equal total weights. Each run takes 2–9 seconds on a laptop CPU.
 
-- [paper/paper.html](paper/paper.html): the full paper, with proofs
+- [paper/paper.pdf](paper/paper.pdf): the full paper as a PDF (LaTeX source in [paper/latex/](paper/latex/))
+- [paper/paper.html](paper/paper.html): the same paper as a web page
 - [RESULTS.md](RESULTS.md): every table, the commands and the knobs
 - [LAB-NOTES.md](LAB-NOTES.md): raw notes with predictions written before each run
 - [experiments/](experiments/): the four worlds, the fits and every run (`*.jsonl`); [charts.py](charts.py) draws every figure
