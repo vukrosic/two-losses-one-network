@@ -91,6 +91,39 @@ The effect itself is known: with squared error, a target at a bigger scale swamp
 
 Untested predictions for large systems (pedestrians in driving models, router balance in mixture-of-experts models, multi-token prediction heads) are in [section 13 of the paper](paper/paper.html#s13).
 
+---
+
+## Next: test the law on multi-token prediction in a small language model
+
+> [!NOTE]
+> The code is written and nothing has run yet. The predictions were written before any run ([LAB-NOTES.md, finding 23](LAB-NOTES.md)).
+
+**Multi-token prediction** adds extra heads that guess the token 2, 3 or 4 places ahead, as in DeepSeek-V3. Future tokens are harder to guess, so these heads have the bigger loss, and the law predicts that **next-token prediction is the thing that gets hurt**.
+
+What we predict:
+
+1. **How much worse next-token prediction gets:** P − 1 ≈ 0.15 Λ^0.75, with Λ = head weight × the future heads' loss ÷ the next-token loss, each from a model trained on that head alone. Loss here is **excess loss**: cross-entropy minus the true entropy of the data, the part a model can still learn.
+2. **A small head weight is safe:** when Λ < 1, next-token prediction is not hurt and the future heads are.
+3. **Raw cross-entropy overstates the harm:** Λ from raw cross-entropy, which includes the entropy no model can remove, predicts too much harm.
+4. **A short run is enough to predict it:** Λ and P measured after 1/8 of training predict the harm at the end.
+
+> **If these hold, one cheap measurement tells you how much a multi-token prediction head weight costs next-token prediction.**
+
+Run `bash toy/mtp_runs.sh 0` to time two runs, then stages 1–4, then `python3 toy/mtpfit.py` to score the predictions.
+
+## To do
+
+| Weakness | Next step |
+|---|---|
+| Tested only on squared error | multi-token prediction above, with cross-entropy |
+| Λ needs the separate networks trained first | prediction 4: Λ from 1/8 of training |
+| The constant moves with depth (×2.4), Muon (×1.7) and GRUs (×0.12) | report one constant per architecture and optimizer; test whether excess-loss Λ removes the shifts |
+| A plain sum of unnormalized losses is rare in practice | multi-token prediction uses a fixed head weight with no normalization |
+| Networks up to 142,000 weights, toy worlds only | a language model on real text after the toy |
+| The harm is not shown to matter downstream | planning failures in the driving world |
+| The theory covers linear networks; the 0.75 exponent is not derived | derive the exponent |
+| The law was fitted on the grids the exploration ran on | score every new test with the fixed law, no refit |
+
 ## Setup
 
 ![The four worlds](figures/worlds.svg)

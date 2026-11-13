@@ -896,3 +896,24 @@ The c-against-σ correlation over all 25 settings is only 0.36, so σ alone does
 5. Per-thing loss scaling removes the effect, and the loss weight is the cause (weight a² = units ×a).
 
 Rejected explanations for the size effect: separate inputs, finite data, input scaling, the step slope α, and a slowdown law in F.
+
+## Finding 23 (planned): multi-token prediction in a small language model. Predictions written before any run, 2026-11-13
+
+**Question:** a language model trained with multi-token prediction has extra heads that guess the token 2, 3 or 4 places ahead (DeepSeek-V3, Gloeckle et al. 2024). Future tokens are harder to guess, so those heads have a bigger loss. Does the loss-ratio law predict how much worse the model's next-token prediction gets, from one number measured on cheap runs?
+
+**What is predicted, exactly.** P₁ = the next-token head's excess loss in the model trained with future heads ÷ its excess loss in the same model trained on next-token prediction only. Excess loss = cross-entropy − the true entropy, the part a model can still learn; the data come from a Markov chain, so the true entropy of every future token is known exactly. The input is Λ₁ = (sum of the future heads' loss terms) ÷ (the next-token term) = W × mean(L₂..L_K) ÷ L₁, each L from a model trained on that head alone at the same width.
+
+**World and model:** order-2 Markov chain over 64 tokens with random Dirichlet rows (concentration 0.5, token frequencies 1/rank), fresh sequences every step. Transformer with 2 layers, widths 32 / 64 / 128, RoPE, QK-norm, SwiGLU, RMSNorm, Adam with cosine decay to zero, 1,500 steps. Loss = CE₁ + W · mean(CE₂..CE_K). Code: `toy/mtp.py`, runs: `toy/mtp_runs.sh`, scoring: `toy/mtpfit.py` (fixed law, no refit).
+
+| # | Prediction | Test |
+|---|---|---|
+| 1 | P₁ − 1 ≈ 0.15 Λ₁^0.75, within ×2.5 | stage 1: K = 4, W = 0.1 / 0.3 / 1 / 3, widths 32 / 64 / 128 |
+| 2 | When W is small enough that Λ₁ < 1, next-token prediction is not hurt (P₁ < 1.1); the future heads are, by the same law with their own Λ | stage 1, W = 0.1 and 0.3 |
+| 3 | Λ from excess loss fits; Λ from raw cross-entropy (entropy included) predicts too much harm, because the entropy part is a floor no network removes (finding 12: the penalty hits only the learnable part) | stage 1, both Λs scored |
+| 4 | **Cheap prediction:** Λ₁ from own models trained for 1/8 of the steps is within ×1.5 of Λ₁ at full length, and P₁ at 1/8 of the steps is within ×1.3 of P₁ at full length (rule 4: P stays fixed while the thing is still learning) | stage 2 |
+| 5 | P₁ falls with width only where the next-token model's own excess loss stops falling with width (rule 3) | stages 1 and 4 |
+| 6 | P₁ > 1 at every width: future heads never help next-token prediction here, because the chain's next token depends only on the last 2 tokens, so future heads teach nothing the next-token head needs. A gain from future heads, as Gloeckle et al. saw in large models, would need data with longer structure | stages 1, 3 |
+| 7 | Heads with their own transformer block (Gloeckle style) and K = 2 stay on the same line; the block shifts the constant by less than ×2 | stage 3 |
+| 8 | A more predictable chain (ALPHA 0.1) and a less predictable one (ALPHA 2) stay on the same line once Λ uses excess loss | stage 4 |
+
+**If 1 and 3 hold,** the law carries from squared error to cross-entropy and to a loss sum large language models really use, and prediction 4 makes it a cheap check before training. **If they fail,** the law is limited to squared error, and the repo stays a finished study of that case.
